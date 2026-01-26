@@ -1,0 +1,7 @@
+{
+  "name": "VOICE TRUTH SCANNER™ ELITE",
+  "description": "Enterprise-grade AI fraud detection and user safety application for real-time forensic voice analysis and deepfake detection.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
