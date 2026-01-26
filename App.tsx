@@ -115,6 +115,7 @@ const App: React.FC = () => {
   const runAnalysis = async () => {
     if (!audioFile) return;
     setStatus('ANALYZING');
+    setResult(null); // Clear previous result immediately
     try {
       const rawResult = await analyzeForensicAudio(audioFile, language);
       const enrichedResult: AnalysisResult = {
@@ -294,6 +295,8 @@ const UserDashboard: React.FC<any> = ({
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const isMismatch = result && !result.language_match;
+
   return (
     <div className="flex flex-col gap-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
@@ -412,7 +415,23 @@ const UserDashboard: React.FC<any> = ({
         </section>
 
         {/* EQUAL BOX 2: TRUTH MATRIX OVERVIEW */}
-        <section className="flex flex-col p-1 rounded-[3.5rem] bg-gradient-to-br from-indigo-500/20 via-slate-800/40 to-indigo-500/5 shadow-2xl min-h-full">
+        <section className="flex flex-col p-1 rounded-[3.5rem] bg-gradient-to-br from-indigo-500/20 via-slate-800/40 to-indigo-500/5 shadow-2xl min-h-full relative overflow-hidden">
+          {isMismatch && (
+            <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center p-10 animate-in fade-in zoom-in duration-300">
+               <div className="p-10 rounded-[3rem] border border-amber-500/50 bg-slate-950 text-amber-500 text-center space-y-6 shadow-2xl shadow-amber-500/20">
+                 <Languages className="w-16 h-16 mx-auto animate-bounce" />
+                 <h3 className="text-2xl font-black font-futuristic uppercase tracking-[0.2em]">MISMATCH DETECTED</h3>
+                 <p className="text-sm font-bold uppercase tracking-widest leading-relaxed">
+                   Mismatched audio or language detected. <br/>
+                   Expected <span className="text-white bg-amber-600/20 px-2 rounded">{language}</span>, but detected <span className="text-white bg-amber-600/20 px-2 rounded">{result.detected_language}</span>.
+                 </p>
+                 <button onClick={reset} className="px-8 py-3 rounded-xl bg-amber-500 text-black font-black uppercase text-[10px] tracking-widest hover:bg-amber-400 transition-colors shadow-lg">
+                   RECALIBRATE CONSOLE
+                 </button>
+               </div>
+            </div>
+          )}
+          
           <div className="flex-1 p-6 md:p-14 rounded-[3.4rem] border border-slate-800 bg-slate-900/40 backdrop-blur-3xl relative overflow-hidden flex flex-col justify-center gap-10">
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl transition-colors"></div>
             
@@ -449,47 +468,31 @@ const UserDashboard: React.FC<any> = ({
 
       {/* NOTIFICATIONS & EXTENDED VERDICT (FULL WIDTH BELOW EQUAL BOXES) */}
       <div className="grid grid-cols-1 gap-10">
-        {result && (
+        {result && result.language_match && (
           <div className={`p-8 md:p-12 rounded-[3.5rem] border-2 transition-all animate-in zoom-in-95 bg-slate-950 shadow-2xl ${
-            !result.language_match 
-              ? 'border-amber-500/40 text-amber-400 shadow-amber-500/5'
-              : result.classification === 'AI_GENERATED' 
-                ? 'border-red-500/40 text-red-400 shadow-red-500/5' 
-                : 'border-emerald-500/40 text-emerald-400 shadow-emerald-500/5'
+            result.classification === 'AI_GENERATED' 
+              ? 'border-red-500/40 text-red-400 shadow-red-500/5' 
+              : 'border-emerald-500/40 text-emerald-400 shadow-emerald-500/5'
           }`}>
             <div className="flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="text-center md:text-left space-y-2">
                 <p className="text-[10px] uppercase font-black tracking-[0.4em] opacity-70">
-                  {result.language_match ? 'Final Verdict' : 'Calibration Warning'}
+                  Final Verdict
                 </p>
                 <h3 className="text-4xl md:text-5xl font-black font-futuristic tracking-tighter uppercase leading-none">
-                  {!result.language_match 
-                    ? 'LANGUAGE MISMATCH'
-                    : result.classification === 'AI_GENERATED' 
-                      ? 'AI FRAUD DETECTED' 
-                      : 'ORIGINAL HUMAN'}
+                  {result.classification === 'AI_GENERATED' 
+                    ? 'AI FRAUD DETECTED' 
+                    : 'ORIGINAL HUMAN'}
                 </h3>
               </div>
               <div className="p-8 rounded-[2.5rem] bg-current opacity-10 hidden md:block">
-                {!result.language_match 
-                  ? <Languages className="w-12 h-12" />
-                  : result.classification === 'AI_GENERATED' 
+                {result.classification === 'AI_GENERATED' 
                     ? <AlertTriangle className="w-12 h-12" /> 
                     : <Shield className="w-12 h-12" />}
               </div>
             </div>
             
             <div className="mt-10 pt-10 border-t border-current/10">
-              {!result.language_match ? (
-                 <div className="space-y-4 text-center md:text-left">
-                   <p className="text-lg font-bold uppercase tracking-widest">
-                     Audio detected as: <span className="text-white px-3 py-1 bg-amber-500/20 rounded-lg">{result.detected_language}</span>
-                   </p>
-                   <p className="text-sm leading-relaxed opacity-80 font-medium max-w-3xl">
-                     Forensic integrity check failed. The input signal does not match the configured linguistic frequency ({language}). Recalibrate capture console and retry.
-                   </p>
-                 </div>
-              ) : (
                 <div className="flex flex-col md:flex-row gap-10 items-start">
                    <p className="flex-1 text-lg leading-relaxed italic opacity-90 font-medium text-center md:text-left">
                     "{result.forensic_report}"
@@ -505,7 +508,6 @@ const UserDashboard: React.FC<any> = ({
                     </div>
                   </div>
                 </div>
-              )}
             </div>
           </div>
         )}

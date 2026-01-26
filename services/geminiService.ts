@@ -23,23 +23,18 @@ export const analyzeForensicAudio = async (
           },
         },
         {
-          text: `As an Elite Audio Forensic AI Specialist, your first task is to detect the primary language of this audio.
+          text: `As an Elite Audio Forensic AI, perform an immediate linguistic and authenticity scan.
           
-          The user has specified the expected language is: ${language}.
-          
-          MANDATORY WORKFLOW:
-          1. Detect the audio language.
-          2. Compare it with ${language}.
-          3. If the detected language does NOT match ${language}, set "language_match" to false, identify the "detected_language", and do NOT provide a forensic classification (leave it as default).
-          4. If it matches, set "language_match" to true and perform a 6-layer deep scan for voice authenticity:
-             - Spatial Acoustic Reality
-             - Emotional Micro-Tremors (8-15Hz)
-             - Cultural Idiom Timing
-             - Breath-Emotion Synchronization
-             - Synthetic Spectral Fingerprints
-             - Natural Code-Switch Flow
+          EXPECTED LANGUAGE: ${language}
 
-          Return the results in strict JSON format.`,
+          STRICT PROTOCOL:
+          1. IDENTIFY: Detect the primary language of the speaker in the audio.
+          2. VALIDATE: Compare detected language against "${language}".
+          3. DECIDE:
+             - IF THEY DO NOT MATCH: Set "language_match": false. Stop all further fraud analysis. Set "forensic_report" to exactly: "Mismatched audio or language detected. Expected ${language}, but detected [Detected Language]."
+             - IF THEY MATCH: Set "language_match": true. Proceed to full 6-layer forensic analysis (Spatial, Emotional, Cultural, Breath, Spectral, Code-Switching).
+
+          Return valid JSON.`,
         },
       ],
     },
@@ -48,20 +43,11 @@ export const analyzeForensicAudio = async (
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          detected_language: { type: Type.STRING, description: "The language detected in the audio." },
-          language_match: { type: Type.BOOLEAN, description: "True if the detected language matches the expected language." },
-          classification: { 
-            type: Type.STRING, 
-            description: "AI_GENERATED or HUMAN. Use 'HUMAN' as fallback if language doesn't match." 
-          },
-          confidence_score: { 
-            type: Type.NUMBER, 
-            description: "Probability score from 0.0 to 1.0" 
-          },
-          fraud_risk_level: { 
-            type: Type.STRING, 
-            description: "HIGH, MEDIUM, or LOW" 
-          },
+          detected_language: { type: Type.STRING, description: "The language identified by the AI." },
+          language_match: { type: Type.BOOLEAN, description: "Comparison result." },
+          classification: { type: Type.STRING, enum: ["AI_GENERATED", "HUMAN"] },
+          confidence_score: { type: Type.NUMBER },
+          fraud_risk_level: { type: Type.STRING, enum: ["HIGH", "MEDIUM", "LOW"] },
           analysis_layers: {
             type: Type.OBJECT,
             properties: {
@@ -72,35 +58,12 @@ export const analyzeForensicAudio = async (
               spectral_artifacts: { type: Type.STRING },
               code_switching: { type: Type.STRING },
             },
-            required: [
-              "spatial_acoustics", 
-              "emotional_micro_dynamics", 
-              "cultural_linguistics", 
-              "breath_emotion_sync", 
-              "spectral_artifacts", 
-              "code_switching"
-            ],
+            required: ["spatial_acoustics", "emotional_micro_dynamics", "cultural_linguistics", "breath_emotion_sync", "spectral_artifacts", "code_switching"],
           },
-          safety_actions: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Suggested immediate actions"
-          },
-          forensic_report: { 
-            type: Type.STRING, 
-            description: "A comprehensive summary of the verification findings or a language mismatch notification." 
-          },
+          safety_actions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          forensic_report: { type: Type.STRING, description: "Final verdict or mismatch notification." },
         },
-        required: [
-          "detected_language",
-          "language_match",
-          "classification", 
-          "confidence_score", 
-          "fraud_risk_level", 
-          "analysis_layers", 
-          "safety_actions", 
-          "forensic_report"
-        ],
+        required: ["detected_language", "language_match", "classification", "confidence_score", "fraud_risk_level", "analysis_layers", "safety_actions", "forensic_report"],
       },
     },
   });
