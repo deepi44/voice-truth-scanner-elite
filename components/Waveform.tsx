@@ -9,7 +9,8 @@ interface WaveformProps {
 
 const Waveform: React.FC<WaveformProps> = ({ isRecording, isActive, stream }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  // Fix: Initialized useRef with null to provide the expected 1 argument for TypeScript's MutableRefObject.
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -73,7 +74,10 @@ const Waveform: React.FC<WaveformProps> = ({ isRecording, isActive, stream }) =>
     render();
 
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      // Fix: Check for null before canceling the animation frame.
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
+      }
       if (audioCtx) audioCtx.close();
     };
   }, [isRecording, isActive, stream]);

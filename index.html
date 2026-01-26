@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VOICE TRUTH SCANNER™ ELITE</title>
+    <title>VOICE TRUTH SCANNER ELITE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Rajdhani:wght@400;600;700&family=Arima:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -67,6 +67,15 @@
         @keyframes scanline {
             0% { top: -100px; }
             100% { top: 100%; }
+        }
+
+        /* Radar Spin Animation */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 12s linear infinite;
         }
 
         /* CRT Glitch effect on text */

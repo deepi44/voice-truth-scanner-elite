@@ -3,8 +3,6 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, SupportedLanguage } from "../types";
 import { fileToBase64, getMimeType } from "./audioService";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const analyzeForensicAudio = async (
   audioFile: File | Blob,
   language: SupportedLanguage
@@ -12,42 +10,49 @@ export const analyzeForensicAudio = async (
   const base64Data = await fileToBase64(audioFile);
   const mimeType = getMimeType(audioFile);
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: [
-      {
-        parts: [
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: `As an Elite Audio Forensic AI Specialist, analyze this audio sample for voice authenticity. 
-            The spoken language is primarily ${language}. 
-            
-            Perform a 6-layer deep scan:
-            1. Spatial Acoustic Reality: Check for real-world reverberation and mic noise.
-            2. Emotional Micro-Tremors: Detect 8-15Hz human vocal instabilities.
-            3. Cultural Idiom Timing: Analyze natural flow of cultural expressions.
-            4. Breath-Emotion Synchronization: Verify if breath cycles match emotional intensity.
-            5. Synthetic Spectral Fingerprints: Search for clean digital frequency artifacts.
-            6. Natural Code-Switch Flow: Check multilingual transitions.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-            Return the results in strict JSON format according to the provided schema.`,
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType,
           },
-        ],
-      },
-    ],
+        },
+        {
+          text: `As an Elite Audio Forensic AI Specialist, your first task is to detect the primary language of this audio.
+          
+          The user has specified the expected language is: ${language}.
+          
+          MANDATORY WORKFLOW:
+          1. Detect the audio language.
+          2. Compare it with ${language}.
+          3. If the detected language does NOT match ${language}, set "language_match" to false, identify the "detected_language", and do NOT provide a forensic classification (leave it as default).
+          4. If it matches, set "language_match" to true and perform a 6-layer deep scan for voice authenticity:
+             - Spatial Acoustic Reality
+             - Emotional Micro-Tremors (8-15Hz)
+             - Cultural Idiom Timing
+             - Breath-Emotion Synchronization
+             - Synthetic Spectral Fingerprints
+             - Natural Code-Switch Flow
+
+          Return the results in strict JSON format.`,
+        },
+      ],
+    },
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
+          detected_language: { type: Type.STRING, description: "The language detected in the audio." },
+          language_match: { type: Type.BOOLEAN, description: "True if the detected language matches the expected language." },
           classification: { 
             type: Type.STRING, 
-            description: "AI_GENERATED or HUMAN" 
+            description: "AI_GENERATED or HUMAN. Use 'HUMAN' as fallback if language doesn't match." 
           },
           confidence_score: { 
             type: Type.NUMBER, 
@@ -83,10 +88,12 @@ export const analyzeForensicAudio = async (
           },
           forensic_report: { 
             type: Type.STRING, 
-            description: "A comprehensive summary of the verification findings" 
+            description: "A comprehensive summary of the verification findings or a language mismatch notification." 
           },
         },
         required: [
+          "detected_language",
+          "language_match",
           "classification", 
           "confidence_score", 
           "fraud_risk_level", 
