@@ -5,7 +5,6 @@ export const fileToBase64 = (file: File | Blob): Promise<string> => {
     reader.readAsDataURL(file);
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove data:audio/mp3;base64, prefix
       const base64 = result.split(',')[1];
       resolve(base64);
     };

@@ -1,8 +1,8 @@
 
 export type Role = 'USER' | 'ADMIN';
-export type Theme = 'dark' | 'light';
 export type Classification = 'AI_GENERATED' | 'HUMAN';
 export type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+export type Theme = 'DARK' | 'LIGHT';
 
 export interface AnalysisLayers {
   spatial_acoustics: string;
@@ -23,21 +23,11 @@ export interface AnalysisResult {
   safety_actions: string[];
   forensic_report: string;
   operator: string;
-  // Language detection fields
   detected_language: string;
   language_match: boolean;
 }
 
-export interface AnalyticsData {
-  totalScans: number;
-  fraudCount: number;
-  humanCount: number;
-  riskDistribution: { high: number; medium: number; low: number };
-  languageUsage: Record<string, number>;
-  recentScans: AnalysisResult[];
-}
-
-export type AppStatus = 'IDLE' | 'RECORDING' | 'UPLOADING' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
+export type AppStatus = 'IDLE' | 'RECORDING' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
 
 export type SupportedLanguage = 'Tamil' | 'English' | 'Hindi' | 'Malayalam' | 'Telugu';
 
@@ -48,5 +38,3 @@ export const LANGUAGE_LOCALES: Record<SupportedLanguage, string> = {
   Malayalam: 'ml-IN',
   Telugu: 'te-IN',
 };
-
-export const ADMIN_EMAILS = ['admin@truthscanner.ai', 'supervisor@truthscanner.ai', 'lead@truthscanner.ai'];

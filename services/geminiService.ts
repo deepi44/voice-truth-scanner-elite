@@ -23,18 +23,30 @@ export const analyzeForensicAudio = async (
           },
         },
         {
-          text: `As an Elite Audio Forensic AI, perform an immediate linguistic and authenticity scan.
+          text: `VOICE TRUTH SCANNER ELITE - FORENSIC PROTOCOL
           
-          EXPECTED LANGUAGE: ${language}
+          EXPECTED OPERATIONAL LANGUAGE: ${language}
 
-          STRICT PROTOCOL:
-          1. IDENTIFY: Detect the primary language of the speaker in the audio.
-          2. VALIDATE: Compare detected language against "${language}".
-          3. DECIDE:
-             - IF THEY DO NOT MATCH: Set "language_match": false. Stop all further fraud analysis. Set "forensic_report" to exactly: "Mismatched audio or language detected. Expected ${language}, but detected [Detected Language]."
-             - IF THEY MATCH: Set "language_match": true. Proceed to full 6-layer forensic analysis (Spatial, Emotional, Cultural, Breath, Spectral, Code-Switching).
+          TASK 1: LANGUAGE DETECTION
+          Detect the actual primary language spoken in the audio.
+          
+          TASK 2: MATCH VERIFICATION
+          Compare the detected language with the expected language: ${language}.
+          If they do not match:
+          - Set "language_match": false
+          - Set "forensic_report": "CRITICAL: Input audio language does not match selected system locale (${language})."
+          - Populate all other required fields (classification, layers, etc.) with default/fallback values indicating "INCONCLUSIVE DUE TO MISMATCH".
 
-          Return valid JSON.`,
+          TASK 3: 6-LAYER FORENSIC ANALYSIS (Only if Task 2 succeeds)
+          Perform a deep spectral and acoustic reasoning scan based on these 6 conceptual layers:
+          Layer 1 – Spatial Acoustic Reality: Analyze room reverberation vs AI sterility.
+          Layer 2 – Emotional Micro-Tremors: Detect 8–15Hz vocal instabilities unique to human emotion.
+          Layer 3 – Cultural Idiom Timing: Check natural timing of ${language}-specific conversational slang.
+          Layer 4 – Breath-Emotion Synchronization: Verify if breath intake aligns with emotional emphasis.
+          Layer 5 – Synthetic Spectral Fingerprints: Search for frequency consistency artifacts found in AI models.
+          Layer 6 – Natural Code-Switch Flow: Analyze transitions between languages for robotic signatures.
+
+          IMPORTANT: You MUST return a complete JSON object matching the provided schema even if Task 2 fails. If Task 2 fails, set confidence_score to 0 and fraud_risk_level to LOW.`,
         },
       ],
     },
@@ -43,8 +55,8 @@ export const analyzeForensicAudio = async (
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          detected_language: { type: Type.STRING, description: "The language identified by the AI." },
-          language_match: { type: Type.BOOLEAN, description: "Comparison result." },
+          detected_language: { type: Type.STRING, description: "The language detected in the audio file." },
+          language_match: { type: Type.BOOLEAN, description: "True if detected_language matches the expected language." },
           classification: { type: Type.STRING, enum: ["AI_GENERATED", "HUMAN"] },
           confidence_score: { type: Type.NUMBER },
           fraud_risk_level: { type: Type.STRING, enum: ["HIGH", "MEDIUM", "LOW"] },
@@ -61,7 +73,7 @@ export const analyzeForensicAudio = async (
             required: ["spatial_acoustics", "emotional_micro_dynamics", "cultural_linguistics", "breath_emotion_sync", "spectral_artifacts", "code_switching"],
           },
           safety_actions: { type: Type.ARRAY, items: { type: Type.STRING } },
-          forensic_report: { type: Type.STRING, description: "Final verdict or mismatch notification." },
+          forensic_report: { type: Type.STRING },
         },
         required: ["detected_language", "language_match", "classification", "confidence_score", "fraud_risk_level", "analysis_layers", "safety_actions", "forensic_report"],
       },
@@ -69,7 +81,15 @@ export const analyzeForensicAudio = async (
   });
 
   const text = response.text;
-  if (!text) throw new Error("Empty response from AI engine");
+  if (!text || text.trim() === "") {
+    console.error("Gemini API Response Object:", response);
+    throw new Error("Forensic engine failed to return data. This may be due to safety filtering or input size.");
+  }
   
-  return JSON.parse(text) as AnalysisResult;
+  try {
+    return JSON.parse(text) as AnalysisResult;
+  } catch (parseError) {
+    console.error("Failed to parse JSON response:", text);
+    throw new Error("Forensic engine returned invalid data format.");
+  }
 };

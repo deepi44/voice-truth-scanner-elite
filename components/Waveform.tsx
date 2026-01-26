@@ -9,7 +9,6 @@ interface WaveformProps {
 
 const Waveform: React.FC<WaveformProps> = ({ isRecording, isActive, stream }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // Fix: Initialized useRef with null to provide the expected 1 argument for TypeScript's MutableRefObject.
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -39,31 +38,27 @@ const Waveform: React.FC<WaveformProps> = ({ isRecording, isActive, stream }) =>
 
       if (isActive && analyser && dataArray) {
         analyser.getByteFrequencyData(dataArray);
-        const barWidth = (width / dataArray.length) * 2.5;
+        const barWidth = (width / dataArray.length) * 2;
         let x = 0;
-
         for (let i = 0; i < dataArray.length; i++) {
           const barHeight = (dataArray[i] / 255) * height;
-          const hue = (i / dataArray.length) * 360;
-          ctx.fillStyle = `hsla(${hue + 220}, 80%, 60%, 0.8)`;
+          ctx.fillStyle = `rgba(99, 102, 241, ${0.4 + (dataArray[i]/255)})`;
           ctx.fillRect(x, height - barHeight, barWidth, barHeight);
-          x += barWidth + 1;
+          x += barWidth + 2;
         }
       } else if (isRecording || isActive) {
-        // Simple static wave animation when no stream
         ctx.beginPath();
         ctx.strokeStyle = '#6366f1';
         ctx.lineWidth = 2;
         for (let x = 0; x < width; x++) {
-          const y = height / 2 + Math.sin(x * 0.05 + Date.now() * 0.005) * 20;
+          const y = height / 2 + Math.sin(x * 0.05 + Date.now() * 0.01) * 15;
           if (x === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
       } else {
-        // Flat line
         ctx.beginPath();
-        ctx.strokeStyle = '#334155';
+        ctx.strokeStyle = '#1e293b';
         ctx.moveTo(0, height / 2);
         ctx.lineTo(width, height / 2);
         ctx.stroke();
@@ -72,24 +67,13 @@ const Waveform: React.FC<WaveformProps> = ({ isRecording, isActive, stream }) =>
     };
 
     render();
-
     return () => {
-      // Fix: Check for null before canceling the animation frame.
-      if (animationRef.current !== null) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
       if (audioCtx) audioCtx.close();
     };
   }, [isRecording, isActive, stream]);
 
-  return (
-    <canvas 
-      ref={canvasRef} 
-      width={600} 
-      height={100} 
-      className="w-full h-24 rounded-lg bg-black/20"
-    />
-  );
+  return <canvas ref={canvasRef} width={800} height={120} className="w-full h-24 rounded-2xl bg-slate-900/50" />;
 };
 
 export default Waveform;
