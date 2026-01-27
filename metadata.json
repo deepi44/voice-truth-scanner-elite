@@ -1,6 +1,6 @@
 {
   "name": "VOICE TRUTH SCANNER ELITE",
-  "description": "Enterprise-grade AI fraud detection and user safety application for real-Role-based forensic voice analysis (2026 Edition).",
+  "description": "Enterprise-grade AI fraud detection and user safety application for real-time forensic voice analysis (2026 Edition).",
   "requestFramePermissions": [
     "microphone"
   ]

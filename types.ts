@@ -11,6 +11,7 @@ export interface AnalysisLayers {
   breath_emotion_sync: string;
   spectral_artifacts: string;
   code_switching: string;
+  behavioral_threats: string; // New: Explicit behavioral analysis
 }
 
 export interface AnalysisResult {
@@ -25,6 +26,8 @@ export interface AnalysisResult {
   operator: string;
   detected_language: string;
   language_match: boolean;
+  is_scam: boolean; // New: Direct scam detection
+  scam_keywords: string[]; // New: Extracted red flags
 }
 
 export type AppStatus = 'IDLE' | 'RECORDING' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
