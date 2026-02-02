@@ -11,7 +11,6 @@ export interface AnalysisLayers {
   breath_emotion_sync: string;
   spectral_artifacts: string;
   code_switching: string;
-  behavioral_threats: string; // New: Explicit behavioral analysis
 }
 
 export interface AnalysisResult {
@@ -21,13 +20,10 @@ export interface AnalysisResult {
   confidence_score: number;
   fraud_risk_level: RiskLevel;
   analysis_layers: AnalysisLayers;
-  safety_actions: string[];
-  forensic_report: string;
-  operator: string;
+  analysis_summary: string;
   detected_language: string;
   language_match: boolean;
-  is_scam: boolean; // New: Direct scam detection
-  scam_keywords: string[]; // New: Extracted red flags
+  operator: string;
 }
 
 export type AppStatus = 'IDLE' | 'RECORDING' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
@@ -40,4 +36,30 @@ export const LANGUAGE_LOCALES: Record<SupportedLanguage, string> = {
   Hindi: 'hi-IN',
   Malayalam: 'ml-IN',
   Telugu: 'te-IN',
+};
+
+export const LANGUAGE_METADATA: Record<SupportedLanguage, {
+  nativeName: string;
+  layers: Record<string, string>;
+}> = {
+  Tamil: {
+    nativeName: 'தமிழ்',
+    layers: { spatial: 'இடம்', emotional: 'உணர்ச்சி', cultural: 'கலாச்சாரம்', respiratory: 'சுவாசம்', spectral: 'நிறமாலை', linguistic: 'மொழி' }
+  },
+  English: {
+    nativeName: 'English',
+    layers: { spatial: 'Spatial', emotional: 'Emotion', cultural: 'Cultural', respiratory: 'Breath', spectral: 'Spectral', linguistic: 'Language' }
+  },
+  Hindi: {
+    nativeName: 'हिन्दी',
+    layers: { spatial: 'स्थानिक', emotional: 'भावना', cultural: 'सांस्कृतिक', respiratory: 'श्वसन', spectral: 'स्पेक्ट्रल', linguistic: 'भाषा' }
+  },
+  Malayalam: {
+    nativeName: 'മലയാളം',
+    layers: { spatial: 'സ്ഥലം', emotional: 'വികാരം', cultural: 'സാംസ്காരികം', respiratory: 'ശ്വാസം', spectral: 'സ്പെക്ട്രൽ', linguistic: 'ഭാഷ' }
+  },
+  Telugu: {
+    nativeName: 'తెలుగు',
+    layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట్రల్', linguistic: 'భాഷ' }
+  }
 };

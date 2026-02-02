@@ -1,25 +1,26 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Role, 
   AppStatus, 
   AnalysisResult, 
   SupportedLanguage, 
-  LANGUAGE_LOCALES,
-  Theme
+  LANGUAGE_LOCALES, 
+  LANGUAGE_METADATA, 
+  Theme 
 } from './types';
-import { analyzeForensicAudio } from './services/geminiService';
+import { analyzeForensicAudio, simulateForensicDiagnostic } from './services/geminiService';
 import Waveform from './components/Waveform';
 import RiskMeter from './components/RiskMeter';
 import AnalysisLayer from './components/AnalysisLayer';
 import { 
   Shield, Upload, Mic, Trash2, Download, 
-  Info, Languages, Lock, User, Fingerprint, LogOut, 
-  Globe, FileText, Radar, Search, Activity, Users,
-  Sun, Moon, BarChart3, Database, ShieldAlert,
-  Terminal, Activity as Heartbeat, XCircle, AlertTriangle, CheckCircle,
-  RefreshCcw, ShieldCheck, History, MessageSquareWarning,
-  Eye, Zap, AlertCircle, Cpu, Waves, Workflow
+  Lock, User, Fingerprint, LogOut, 
+  Globe, FileText, Radar, Search, Activity, 
+  Sun, Moon, ShieldAlert,
+  RefreshCcw, ShieldCheck, ShieldX, X,
+  Zap, AlertTriangle, AlertOctagon, Link,
+  Waves, Cpu, Network, Database,
+  TrendingUp, BarChart3, AlertCircle, Key, Users, Ban
 } from 'lucide-react';
 
 const CREDENTIALS = {
@@ -43,6 +44,9 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<AnalysisResult[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
+  const [isInstantMode, setIsInstantMode] = useState(false);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [showUrlPanel, setShowUrlPanel] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -50,7 +54,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     document.body.className = theme === 'DARK' ? 'dark-theme' : 'light-theme';
-    const saved = localStorage.getItem('forensic_history_v3');
+    const saved = localStorage.getItem('forensic_history_v11');
     if (saved) setHistory(JSON.parse(saved));
   }, [theme]);
 
@@ -61,53 +65,79 @@ const App: React.FC = () => {
     setAuthError(null);
     setIsLoggingIn(true);
     
+    // STEP 1: Security Validation
+    const email = loginEmail.toLowerCase().trim();
+    if (!email.includes('@truthscanner.ai')) {
+      setTimeout(() => {
+        setAuthError('SECURITY_FAULT: External emails are blacklisted.');
+        setIsLoggingIn(false);
+      }, 800);
+      return;
+    }
+
     setTimeout(() => {
-      const email = loginEmail.toLowerCase().trim();
-      if (email === CREDENTIALS.ADMIN.email && loginPassword === CREDENTIALS.ADMIN.password) {
+      if ((email === CREDENTIALS.ADMIN.email && loginPassword === CREDENTIALS.ADMIN.password) ||
+          (email === CREDENTIALS.USER.email && loginPassword === CREDENTIALS.USER.password)) {
         setUserEmail(email); 
-        setRole('ADMIN');
-      } else if (email === CREDENTIALS.USER.email && loginPassword === CREDENTIALS.USER.password) {
-        setUserEmail(email);
-        setRole('USER');
-      } else if (email && loginPassword) {
-        setUserEmail(email);
-        setRole('USER');
+        setRole(email === CREDENTIALS.ADMIN.email ? 'ADMIN' : 'USER');
       } else {
-        setAuthError('AUTHENTICATION FAILED. PLEASE USE TERMINAL BYPASS.');
+        setAuthError('AUTHENTICATION_REJECTED: Unauthorized Access Token.');
       }
       setIsLoggingIn(false);
-    }, 600);
+    }, 1200);
   };
 
-  const handleLogout = () => {
+  const handleLogout = () => { 
     setUserEmail(null); 
     setResult(null); 
     setAudioFile(null); 
-    setStatus('IDLE');
+    setStatus('IDLE'); 
   };
 
   const runAnalysis = async (fileToAnalyze?: File | Blob) => {
     const file = fileToAnalyze || audioFile;
-    if (!file) return;
+    if (!file && !isInstantMode) return;
     
     setStatus('ANALYZING');
     setResult(null);
     setErrorMessage(null);
     
     try {
-      const res = await analyzeForensicAudio(file, language);
-      setResult(res);
-      setStatus('COMPLETED');
-      
-      if (res.language_match) {
-        const entry = { ...res, id: crypto.randomUUID(), timestamp: new Date().toISOString(), operator: userEmail || 'Operator' };
-        const updatedHistory = [entry, ...history].slice(0, 50);
-        setHistory(updatedHistory);
-        localStorage.setItem('forensic_history_v3', JSON.stringify(updatedHistory));
+      let res: AnalysisResult;
+      if (isInstantMode && !file) {
+        res = await simulateForensicDiagnostic(language);
+      } else {
+        if (!file) throw new Error("SIGNAL_MISSING: No biometric input detected.");
+        res = await analyzeForensicAudio(file, language);
       }
+      finishAnalysis(res);
     } catch (err: any) {
-      console.error("Critical Analysis Fault:", err);
-      setErrorMessage(err.message || "NEURAL LINK SEVERED: Signal out of sync.");
+      setErrorMessage(err.message || "FORENSIC_LINK_FAILED");
+      setStatus('ERROR');
+    }
+  };
+
+  const finishAnalysis = (res: AnalysisResult) => {
+    setResult(res);
+    setStatus('COMPLETED');
+    const updatedHistory = [{ ...res, id: crypto.randomUUID() }, ...history].slice(0, 50);
+    setHistory(updatedHistory);
+    localStorage.setItem('forensic_history_v11', JSON.stringify(updatedHistory));
+  };
+
+  const handleUrlUplink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!audioUrl) return;
+    setStatus('ANALYZING');
+    setShowUrlPanel(false);
+    try {
+      const response = await fetch(audioUrl);
+      if (!response.ok) throw new Error("REMOTE_UPLINK_TIMEOUT");
+      const blob = await response.blob();
+      setAudioFile(blob);
+      runAnalysis(blob);
+    } catch (err: any) {
+      setErrorMessage("UPLINK_ABORTED: Remote fetch failed (CORS/Network Error). Use manual upload.");
       setStatus('ERROR');
     }
   };
@@ -119,7 +149,7 @@ const App: React.FC = () => {
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
       recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setAudioFile(blob);
@@ -130,93 +160,89 @@ const App: React.FC = () => {
       recorder.start();
       setStatus('RECORDING');
     } catch (err) {
-      setErrorMessage("OS-LEVEL EXCEPTION: Audio hardware is locked or missing.");
+      setErrorMessage("HARDWARE_FAILURE: Microphone access denied.");
       setStatus('ERROR');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && status === 'RECORDING') {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
   };
 
-  const reset = () => {
-    setAudioFile(null);
-    setResult(null);
-    setStatus('IDLE');
-    setErrorMessage(null);
-    setRecordingStream(null);
+  const reset = () => { 
+    setAudioFile(null); 
+    setResult(null); 
+    setStatus('IDLE'); 
+    setErrorMessage(null); 
+    setAudioUrl(''); 
+    setShowUrlPanel(false);
   };
 
-  const themeClass = theme === 'DARK' ? 'bg-[#010409] text-slate-100' : 'bg-[#f8fafc] text-slate-900';
+  const deleteHistoryItem = (id: string) => {
+    const updated = history.filter(item => item.id !== id);
+    setHistory(updated);
+    localStorage.setItem('forensic_history_v11', JSON.stringify(updated));
+  };
+
+  // ADMIN DASHBOARD CALCULATIONS
+  const totalScans = history.length;
+  const threatCount = history.filter(h => h.classification === 'AI_GENERATED' || !h.language_match).length;
+  const humanCount = totalScans - threatCount;
+  const avgConfidence = totalScans > 0 ? (history.reduce((acc, curr) => acc + curr.confidence_score, 0) / totalScans) * 100 : 0;
+
+  // THEME VARS
+  const themeClass = theme === 'DARK' ? 'bg-transparent text-slate-100' : 'bg-transparent text-slate-900';
   const cardClass = theme === 'DARK' ? 'bg-[#0d1117]/90 border-white/5 shadow-2xl' : 'bg-white/95 border-slate-200 shadow-xl';
-  const accentText = theme === 'DARK' ? 'text-indigo-400' : 'text-indigo-600';
-  const subtextClass = theme === 'DARK' ? 'text-slate-500' : 'text-slate-400';
+  const accentText = theme === 'DARK' ? 'text-indigo-400' : 'text-indigo-700';
+  const headingText = theme === 'DARK' ? 'text-white' : 'text-slate-950';
+  const subtextClass = theme === 'DARK' ? 'text-slate-400' : 'text-slate-800';
+  const mutedText = theme === 'DARK' ? 'text-slate-500' : 'text-slate-600';
+  const meta = LANGUAGE_METADATA[language];
 
   if (!userEmail) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-700`}>
-        <div className={`w-full max-w-md p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border glass ${cardClass}`}>
-          <div className="flex flex-col items-center gap-6 mb-8 sm:mb-10">
-            <div className={`p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] ${theme === 'DARK' ? 'bg-indigo-600/20 text-indigo-500 border border-indigo-500/30' : 'bg-indigo-600 text-white shadow-xl'}`}>
-              <Shield className="w-10 h-10 sm:w-12 sm:h-12" />
+      <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6`}>
+        <div className={`w-full max-w-md p-8 sm:p-14 rounded-[2.5rem] sm:rounded-[4.5rem] border glass ${cardClass} relative overflow-hidden`}>
+          {isLoggingIn && (
+            <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-white space-y-6">
+              <RefreshCcw className="w-12 h-12 animate-spin text-indigo-400" />
+              <p className="text-[10px] font-black uppercase tracking-[1em] animate-pulse">Validating Neural Key</p>
             </div>
-            <div className="text-center space-y-1">
-              <h1 className="text-xl sm:text-2xl font-black font-futuristic tracking-[0.2em] uppercase text-indigo-500">VOICE TRUTH SCANNER</h1>
-              <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.4em] opacity-60 ${accentText}`}>ELITE FORENSIC TERMINAL</p>
+          )}
+          <div className="flex flex-col items-center gap-8 sm:gap-12 mb-10 sm:mb-16">
+            <div className="p-10 sm:p-12 rounded-[2.5rem] bg-indigo-600 text-white shadow-[0_0_50px_rgba(79,70,229,0.3)]">
+              <Shield className="w-14 h-14 sm:w-20 h-20" />
+            </div>
+            <div className="text-center">
+              <h1 className={`text-3xl sm:text-4xl font-black font-futuristic tracking-[0.2em] uppercase ${accentText}`}>TRUTH SCANNER</h1>
+              <p className={`text-[10px] sm:text-[12px] font-black uppercase tracking-[0.6em] ${mutedText}`}>ELITE FORENSIC SUITE v4.5</p>
             </div>
           </div>
-          
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className={`text-[8px] sm:text-[9px] uppercase font-black tracking-widest px-2 ${accentText}`}>OPERATOR IDENTITY</label>
-                <div className="relative group">
-                   <User className={`absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 transition-opacity group-focus-within:opacity-100 ${accentText}`} />
-                   <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={`w-full rounded-2xl py-3.5 sm:py-4 pl-12 pr-6 border outline-none transition-all text-sm ${theme === 'DARK' ? 'bg-black/40 border-white/5 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-400'}`} required />
-                </div>
+          <form onSubmit={handleLogin} className="space-y-6 sm:space-y-10">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="relative">
+                <User className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 h-5 ${mutedText}`} />
+                <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="OPERATOR EMAIL" className={`w-full rounded-2xl py-4 sm:py-6 pl-14 sm:pl-18 pr-8 border outline-none text-xs sm:text-sm font-bold transition-all ${theme === 'DARK' ? 'bg-black/40 border-white/5 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-700'}`} required />
               </div>
-              <div className="space-y-1.5">
-                <label className={`text-[8px] sm:text-[9px] uppercase font-black tracking-widest px-2 ${accentText}`}>SECURITY ACCESS KEY</label>
-                <div className="relative group">
-                   <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 transition-opacity group-focus-within:opacity-100 ${accentText}`} />
-                   <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={`w-full rounded-2xl py-3.5 sm:py-4 pl-12 pr-6 border outline-none transition-all text-sm ${theme === 'DARK' ? 'bg-black/40 border-white/5 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-400'}`} required />
-                </div>
+              <div className="relative">
+                <Lock className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 h-5 ${mutedText}`} />
+                <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="NEURAL ACCESS TOKEN" className={`w-full rounded-2xl py-4 sm:py-6 pl-14 sm:pl-18 pr-8 border outline-none text-xs sm:text-sm font-bold transition-all ${theme === 'DARK' ? 'bg-black/40 border-white/5 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-700'}`} required />
               </div>
             </div>
-
-            {authError && <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] font-bold uppercase tracking-widest text-center">{authError}</div>}
-
-            <button type="submit" disabled={isLoggingIn} className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.25em] sm:tracking-[0.3em] flex items-center justify-center gap-3 sm:gap-4 transition-all active:scale-95 shadow-xl text-xs sm:text-sm ${theme === 'DARK' ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-              {isLoggingIn ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <><Fingerprint className="w-5 h-5" /> INITIALIZE SESSION</>}
+            {authError && (
+              <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                <AlertOctagon className="w-5 h-5 text-red-500" />
+                <p className="text-[10px] font-black uppercase text-red-500 tracking-widest leading-relaxed">{authError}</p>
+              </div>
+            )}
+            <button type="submit" className="w-full py-5 sm:py-7 rounded-[2rem] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] bg-indigo-600 text-white shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-5 text-sm">
+              <Fingerprint className="w-7 h-7" /> AUTHORIZE UPLINK
             </button>
-            
-            <div className={`mt-6 p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border space-y-3 transition-all ${theme === 'DARK' ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100 shadow-inner'}`}>
-              <div className="flex items-center gap-2">
-                <Workflow className={`w-3.5 h-3.5 ${accentText}`} />
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Terminal Credentials</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-black/30 border border-white/5">
-                  <p className="text-[7px] font-black uppercase tracking-widest text-indigo-500 mb-1">Global Admin</p>
-                  <div className="flex justify-between items-center text-[9px] font-bold">
-                    <span className="opacity-40">admin@truthscanner.ai</span>
-                    <span className="opacity-40">admin123</span>
-                  </div>
-                  <button type="button" onClick={() => { setLoginEmail(CREDENTIALS.ADMIN.email); setLoginPassword(CREDENTIALS.ADMIN.password); }} className="mt-2 text-[7px] uppercase font-black tracking-widest text-indigo-400 hover:underline">Apply Admin</button>
-                </div>
-                
-                <div className="p-3 rounded-xl bg-black/30 border border-white/5">
-                  <p className="text-[7px] font-black uppercase tracking-widest text-emerald-500 mb-1">Standard Operator</p>
-                  <div className="flex justify-between items-center text-[9px] font-bold">
-                    <span className="opacity-40">user@truthscanner.ai</span>
-                    <span className="opacity-40">user123</span>
-                  </div>
-                  <button type="button" onClick={() => { setLoginEmail(CREDENTIALS.USER.email); setLoginPassword(CREDENTIALS.USER.password); }} className="mt-2 text-[7px] uppercase font-black tracking-widest text-emerald-400 hover:underline">Apply User</button>
-                </div>
-              </div>
+            <div className="flex justify-center gap-10 sm:gap-14 pt-2">
+               <button type="button" onClick={() => { setLoginEmail(CREDENTIALS.ADMIN.email); setLoginPassword(CREDENTIALS.ADMIN.password); }} className={`text-[10px] font-black uppercase tracking-widest ${accentText} opacity-60 hover:opacity-100 transition-opacity`}>ADMIN_UPLINK</button>
+               <button type="button" onClick={() => { setLoginEmail(CREDENTIALS.USER.email); setLoginPassword(CREDENTIALS.USER.password); }} className={`text-[10px] font-black uppercase tracking-widest text-emerald-600 opacity-60 hover:opacity-100 transition-opacity`}>USER_UPLINK</button>
             </div>
           </form>
         </div>
@@ -226,364 +252,322 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-500 relative ${themeClass}`}>
-      <header className={`sticky top-0 z-50 glass border-b transition-all ${theme === 'DARK' ? 'bg-black/60 border-white/5' : 'bg-white/80 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className={`p-2 rounded-lg sm:rounded-xl ${theme === 'DARK' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-600 text-white shadow-lg'}`}>
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <h1 className="text-xs sm:text-lg font-bold font-futuristic tracking-[0.05em] sm:tracking-[0.1em] uppercase truncate max-w-[140px] sm:max-w-none">VOICE TRUTH SCANNER ELITE</h1>
+      <header className={`sticky top-0 z-50 glass border-b px-6 sm:px-12 flex justify-between items-center h-16 sm:h-24 ${theme === 'DARK' ? 'bg-black/80 border-white/5' : 'bg-white/95 border-slate-300'}`}>
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Shield className={`w-7 h-7 sm:w-10 h-10 ${accentText}`} />
+          <div className="flex flex-col">
+            <h1 className={`text-base sm:text-2xl font-black font-futuristic tracking-[0.2em] uppercase leading-none ${headingText}`}>TRUTH SCANNER</h1>
+            <span className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.5em] ${mutedText}`}>ELITE_OPERATIVE_NODE</span>
           </div>
-
-          <div className="flex items-center gap-2 sm:gap-6">
-            <button onClick={toggleTheme} className={`p-2 rounded-lg sm:rounded-xl transition-all border ${theme === 'DARK' ? 'bg-white/5 border-white/5 text-amber-400' : 'bg-slate-100 border-slate-200 text-indigo-600'}`}>
-              {theme === 'DARK' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-            <div className="h-6 sm:h-8 w-px bg-current/10 hidden xs:block"></div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="flex flex-col items-end hidden sm:flex">
-                <span className={`text-[8px] font-black uppercase tracking-widest ${accentText}`}>{role} ACCESS</span>
-                <span className="text-[10px] font-bold opacity-60">{userEmail}</span>
-              </div>
-              <button onClick={handleLogout} className={`p-2 rounded-lg sm:rounded-xl transition-colors ${theme === 'DARK' ? 'bg-white/5 text-slate-500 hover:text-red-500' : 'bg-slate-100 text-slate-400 hover:text-red-500'}`}>
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        </div>
+        <div className="flex items-center gap-3 sm:gap-8">
+          <button onClick={toggleTheme} className={`p-2 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${theme === 'DARK' ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-300'}`}>
+            {theme === 'DARK' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-800" />}
+          </button>
+          <button onClick={handleLogout} className="p-2 sm:p-4 rounded-xl sm:rounded-2xl text-red-600 border border-red-200 hover:bg-red-500/10 transition-colors"><LogOut className="w-5 h-5" /></button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-10 space-y-8 sm:space-y-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-10 lg:p-14 space-y-10 sm:space-y-16">
         {role === 'ADMIN' ? (
-          <div className="space-y-8 sm:space-y-10 animate-in fade-in slide-in-from-top-4 duration-700">
-             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 px-2 sm:px-0">
-              <div className="space-y-2">
-                <p className={`text-[10px] font-black uppercase tracking-[0.4em] ${accentText}`}>NETWORK COMMAND</p>
-                <h2 className="text-2xl sm:text-3xl font-black font-futuristic tracking-widest uppercase">FORENSIC ANALYTICS</h2>
-              </div>
-              <div className={`px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 flex items-center gap-3`}>
-                <Activity className="w-4 h-4 animate-pulse" />
-                <span className="text-[9px] font-black uppercase">System Secured</span>
-              </div>
+          <div className="space-y-12 animate-in fade-in slide-in-from-top-4 duration-1000">
+            {/* ADMIN COMMAND CENTER */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+               {[
+                 { label: 'Network Requests', val: totalScans, icon: Network, color: 'text-indigo-500' },
+                 { label: 'Fraud Incidents', val: threatCount, icon: ShieldAlert, color: 'text-red-600' },
+                 { label: 'Active Operators', val: 14, icon: Users, color: 'text-emerald-500' },
+                 { label: 'System Accuracy', val: `${Math.round(avgConfidence)}%`, icon: TrendingUp, color: 'text-amber-500' }
+               ].map((stat, i) => (
+                 <div key={i} className={`p-8 rounded-[2.5rem] border glass flex flex-col justify-between h-48 sm:h-52 ${cardClass}`}>
+                    <div className="flex justify-between items-start">
+                       <p className={`text-[10px] font-black uppercase tracking-widest ${mutedText}`}>{stat.label}</p>
+                       <stat.icon className={`w-7 h-7 ${stat.color}`} />
+                    </div>
+                    <h4 className={`text-4xl sm:text-5xl font-black font-futuristic ${headingText}`}>{stat.val}</h4>
+                    <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                       <TrendingUp className="w-3 h-3" /> +2.4% vs L-HOUR
+                    </div>
+                 </div>
+               ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-              {[
-                { icon: <BarChart3 />, label: 'Aggregate Scans', val: history.length, color: 'indigo' },
-                { icon: <ShieldAlert />, label: 'Fraud Intercepts', val: history.filter(h => h.classification === 'AI_GENERATED' || h.is_scam).length, color: 'red' },
-                { icon: <ShieldCheck />, label: 'Verified Human', val: history.filter(h => h.classification === 'HUMAN' && !h.is_scam).length, color: 'emerald' },
-                { icon: <Users />, label: 'Active Operators', val: new Set(history.map(h => h.operator)).size || 1, color: 'amber' }
-              ].map((stat, i) => (
-                <div key={i} className={`p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border glass transition-all hover:translate-y-[-4px] ${cardClass}`}>
-                  <div className={`p-3 sm:p-4 rounded-xl inline-block ${theme === 'DARK' ? 'bg-white/5' : 'bg-slate-100'}`}>
-                    {React.cloneElement(stat.icon as React.ReactElement<any>, { className: `w-5 h-5 sm:w-6 sm:h-6 text-${stat.color}-500` })}
-                  </div>
-                  <div className="mt-4 sm:mt-6">
-                    <p className={`text-[9px] font-black uppercase tracking-widest ${subtextClass}`}>{stat.label}</p>
-                    <p className="text-3xl sm:text-4xl font-black font-futuristic mt-1">{stat.val}</p>
-                  </div>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 px-4">
+                <div className="space-y-3">
+                   <p className={`text-[12px] font-black uppercase tracking-[0.5em] ${accentText}`}>CORE ANALYTICS FEED</p>
+                   <h2 className={`text-3xl sm:text-5xl font-black font-futuristic tracking-tighter uppercase ${headingText}`}>CENTRAL DASHBOARD</h2>
                 </div>
-              ))}
-            </div>
-            
-            <div className={`rounded-[2rem] sm:rounded-[2.5rem] border glass overflow-hidden ${cardClass}`}>
-               <div className="p-6 sm:p-8 border-b border-current/5 flex justify-between items-center">
-                 <div className="flex items-center gap-3 sm:gap-4">
-                    <Database className={`w-4 h-4 sm:w-5 sm:h-5 ${accentText}`} />
-                    <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">Global Threat Archive</h3>
-                 </div>
-               </div>
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left min-w-[600px]">
-                   <thead className={`text-[8px] sm:text-[9px] uppercase font-black tracking-widest ${theme === 'DARK' ? 'bg-white/5' : 'bg-slate-100'}`}>
-                     <tr>
-                       <th className="px-6 sm:px-10 py-4 sm:py-5">Timestamp/Operator</th>
-                       <th className="px-6 sm:px-10 py-4 sm:py-5">Region/Locale</th>
-                       <th className="px-6 sm:px-10 py-4 sm:py-5">Verdict</th>
-                       <th className="px-6 sm:px-10 py-4 sm:py-5 text-right">Confidence</th>
-                     </tr>
-                   </thead>
-                   <tbody className="text-xs">
-                     {history.length > 0 ? history.map((log) => (
-                       <tr key={log.id} className="border-b border-current/5 hover:bg-current/[0.02] transition-colors">
-                         <td className="px-6 sm:px-10 py-6 sm:py-8">
-                           <p className="font-mono text-[9px] sm:text-[10px] opacity-60">{new Date(log.timestamp).toLocaleTimeString()}</p>
-                           <p className="font-bold uppercase tracking-wider mt-0.5">{log.operator}</p>
-                         </td>
-                         <td className="px-6 sm:px-10 py-6 sm:py-8 font-black uppercase tracking-widest">{log.detected_language}</td>
-                         <td className="px-6 sm:px-10 py-6 sm:py-8">
-                           <span className={`text-[8px] sm:text-[9px] font-black uppercase px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border ${log.is_scam || log.classification === 'AI_GENERATED' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
-                             {log.is_scam ? 'FRAUD INTERCEPT' : log.classification.replace('_', ' ')}
-                           </span>
-                         </td>
-                         <td className="px-6 sm:px-10 py-6 sm:py-8 text-right font-black text-sm sm:text-base">{Math.round(log.confidence_score * 100)}%</td>
-                       </tr>
-                     )) : (
-                       <tr><td colSpan={4} className="px-10 py-20 text-center opacity-40 uppercase text-[10px] font-black tracking-[0.5em] italic">Archive null</td></tr>
-                     )}
-                   </tbody>
-                 </table>
-               </div>
-            </div>
+                <div className="flex gap-4 w-full sm:w-auto">
+                   <button onClick={() => { if(window.confirm('PURGE GLOBAL ARCHIVE?')) setHistory([]); }} className="flex-1 sm:flex-none px-8 py-4 rounded-2xl border border-red-500/30 text-red-600 font-black uppercase text-[10px] tracking-widest hover:bg-red-500/10 transition-all flex items-center justify-center gap-3">
+                     <ShieldX className="w-5 h-5" /> PURGE
+                   </button>
+                   <button className="flex-1 sm:flex-none px-8 py-4 rounded-2xl bg-indigo-600 text-white font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl">
+                      <Ban className="w-5 h-5" /> BLOCK_IP
+                   </button>
+                </div>
+             </div>
+             
+             <div className={`rounded-[3.5rem] border overflow-hidden ${cardClass}`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left min-w-[900px]">
+                    <thead className={`text-[11px] sm:text-[13px] font-black uppercase tracking-[0.2em] ${theme === 'DARK' ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                        <tr>
+                          <th className="px-10 py-8">Extraction_ID</th>
+                          <th className="px-10 py-8">Gateway</th>
+                          <th className="px-10 py-8">Verdict</th>
+                          <th className="px-10 py-8">Language_Status</th>
+                          <th className="px-10 py-8 text-right">Confidence</th>
+                          <th className="px-10 py-8 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className={`text-sm ${theme === 'DARK' ? 'text-slate-300' : 'text-slate-900'}`}>
+                        {history.length > 0 ? history.map(h => (
+                          <tr key={h.id} className="border-b border-current/5 hover:bg-indigo-600/5 transition-colors">
+                            <td className="px-10 py-8 font-mono text-xs opacity-50">{h.id.slice(0, 12)}...</td>
+                            <td className="px-10 py-8 font-black uppercase flex items-center gap-2">
+                               <Globe className="w-4 h-4 text-indigo-500" /> {h.detected_language}
+                            </td>
+                            <td className="px-10 py-8">
+                                <span className={`text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-3 w-fit ${h.classification === 'AI_GENERATED' ? 'bg-red-600/10 text-red-600' : 'bg-emerald-600/10 text-emerald-600'}`}>
+                                  {h.classification === 'AI_GENERATED' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />} 
+                                  {h.classification === 'AI_GENERATED' ? 'AI_FRAUD' : 'HUMAN_ORIGINAL'}
+                                </span>
+                            </td>
+                            <td className="px-10 py-8">
+                               <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-md ${h.language_match ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
+                                  {h.language_match ? 'SYNC_OK' : 'MISMATCH'}
+                               </span>
+                            </td>
+                            <td className="px-10 py-8 text-right font-black text-2xl">{Math.round(h.confidence_score * 100)}%</td>
+                            <td className="px-10 py-8 text-right">
+                               <button onClick={() => deleteHistoryItem(h.id)} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"><Trash2 className="w-5 h-5" /></button>
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={6} className="px-10 py-32 text-center">
+                               <p className={`text-[12px] font-black uppercase tracking-[1em] ${mutedText} italic opacity-40`}>Network synchronized. Archive empty.</p>
+                            </td>
+                          </tr>
+                        )}
+                    </tbody>
+                  </table>
+                </div>
+             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-            {/* INPUT PANEL */}
-            <div className="space-y-6 sm:space-y-8 flex flex-col h-full">
-              <section className={`p-6 sm:p-10 lg:p-12 rounded-[2.5rem] sm:rounded-[3.5rem] border glass flex flex-col justify-between flex-1 transition-all duration-500 ${cardClass}`}>
-                <div className="space-y-8 sm:space-y-10">
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                         <Waves className={`w-5 h-5 ${accentText}`} />
-                         <h2 className="text-lg sm:text-xl font-black font-futuristic uppercase tracking-[0.2em]">BIO-ACOUSTIC FEED</h2>
-                      </div>
-                      <p className={`text-[9px] font-black uppercase tracking-[0.4em] ${accentText}`}>LINGUISTIC PHASING ACTIVE</p>
-                    </div>
-                    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all w-full sm:w-auto ${theme === 'DARK' ? 'bg-white/5 border-white/10 text-indigo-400' : 'bg-slate-100 border-slate-200 text-indigo-600 shadow-sm'}`}>
-                      <Globe className="w-4 h-4" />
-                      <select value={language} onChange={(e) => { setLanguage(e.target.value as SupportedLanguage); reset(); }} className="bg-transparent text-[10px] font-black uppercase outline-none cursor-pointer flex-1">
-                        {Object.keys(LANGUAGE_LOCALES).map(lang => (
-                          <option key={lang} value={lang} className={theme === 'DARK' ? 'bg-[#0d1117] text-white' : 'bg-white text-slate-900'}>{lang}</option>
-                        ))}
-                      </select>
-                    </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 items-stretch">
+            {/* USER TERMINAL */}
+            <div className="space-y-10 sm:space-y-14 flex flex-col">
+               <section className={`p-8 sm:p-16 rounded-[3rem] sm:rounded-[5rem] border glass flex flex-col justify-between flex-1 ${cardClass}`}>
+                  <div className="space-y-10 sm:space-y-16">
+                     <div className="flex flex-col sm:flex-row justify-between items-start gap-8">
+                        <div className="space-y-3">
+                           <div className="flex items-center gap-5">
+                              <Network className={`w-8 h-8 ${accentText} animate-pulse`} />
+                              <h2 className={`text-2xl sm:text-4xl font-black font-futuristic uppercase tracking-tighter ${headingText}`}>NEURAL GATEWAY</h2>
+                           </div>
+                           <p className={`text-[10px] sm:text-[13px] font-black uppercase tracking-[0.4em] sm:tracking-[0.6em] ${accentText} opacity-90`}>SECURE NODE: {meta.nativeName}</p>
+                        </div>
+                        <div className="w-full sm:w-auto relative group">
+                           <Globe className={`absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 ${accentText} group-hover:animate-spin-slow transition-all`} />
+                           <select value={language} onChange={(e) => { setLanguage(e.target.value as SupportedLanguage); reset(); }} className={`w-full sm:w-auto pl-16 pr-10 py-4 sm:py-5 rounded-[2rem] border text-[11px] sm:text-xs font-black uppercase cursor-pointer outline-none transition-all ${theme === 'DARK' ? 'bg-black/40 border-white/10 text-indigo-400 hover:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 hover:border-indigo-700 shadow-sm'}`}>
+                              {Object.keys(LANGUAGE_LOCALES).map(l => <option key={l} value={l}>{l}</option>)}
+                           </select>
+                        </div>
+                     </div>
+
+                     <div className={`p-10 rounded-[3rem] sm:rounded-[4rem] border-2 h-56 sm:h-72 flex items-center justify-center transition-all overflow-hidden ${theme === 'DARK' ? 'bg-black/60 border-indigo-500/10' : 'bg-slate-50 border-slate-300'}`}>
+                        <Waveform isRecording={status === 'RECORDING'} isActive={status !== 'IDLE'} stream={recordingStream || undefined} />
+                     </div>
+
+                     <div className="grid grid-cols-3 gap-4 sm:gap-10">
+                        <button onClick={status === 'RECORDING' ? stopRecording : startRecording} disabled={status === 'ANALYZING'} className={`flex flex-col items-center gap-5 sm:gap-10 py-10 sm:py-16 rounded-[3rem] sm:rounded-[4.5rem] border-2 transition-all active:scale-95 group ${status === 'RECORDING' ? 'bg-red-600 border-red-500 text-white shadow-[0_0_60px_rgba(220,38,38,0.4)] animate-pulse' : theme === 'DARK' ? 'bg-white/5 border-white/5 text-slate-500 hover:text-indigo-400 hover:border-indigo-500/40' : 'bg-white border-slate-200 text-slate-700 hover:text-indigo-700 hover:border-indigo-700 shadow-sm'}`}>
+                           <Mic className="w-8 h-8 sm:w-14 h-14 group-hover:scale-110 transition-all" />
+                           <span className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]">{status === 'RECORDING' ? 'STOP' : 'LIVE'}</span>
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} disabled={status === 'ANALYZING'} className={`flex flex-col items-center gap-5 sm:gap-10 py-10 sm:py-16 rounded-[3rem] sm:rounded-[4.5rem] border-2 transition-all active:scale-95 group ${theme === 'DARK' ? 'bg-white/5 border-white/5 text-slate-500 hover:text-indigo-400 hover:border-indigo-500/40' : 'bg-white border-slate-200 text-slate-700 hover:text-indigo-700 hover:border-indigo-700 shadow-sm'}`}>
+                           <Upload className="w-8 h-8 sm:w-14 h-14 group-hover:scale-110 transition-all" />
+                           <span className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]">FILE</span>
+                        </button>
+                        <button onClick={() => setShowUrlPanel(!showUrlPanel)} disabled={status === 'ANALYZING'} className={`flex flex-col items-center gap-5 sm:gap-10 py-10 sm:py-16 rounded-[3rem] sm:rounded-[4.5rem] border-2 transition-all active:scale-95 group ${showUrlPanel ? 'bg-indigo-600 border-indigo-500 text-white shadow-2xl' : theme === 'DARK' ? 'bg-white/5 border-white/5 text-slate-500 hover:text-indigo-400 hover:border-indigo-500/40' : 'bg-white border-slate-200 text-slate-700 hover:text-indigo-700 hover:border-indigo-700 shadow-sm'}`}>
+                           <Link className="w-8 h-8 sm:w-14 h-14 group-hover:scale-110 transition-all" />
+                           <span className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]">URL</span>
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="audio/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setAudioFile(f); runAnalysis(f); } }} className="hidden" />
+                     </div>
                   </div>
 
-                  <div className={`relative p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border-2 overflow-hidden ${theme === 'DARK' ? 'bg-black/60 border-indigo-500/10' : 'bg-slate-50 border-slate-200'} h-32 sm:h-40 flex items-center justify-center`}>
-                    <Waveform isRecording={status === 'RECORDING'} isActive={status !== 'IDLE'} stream={recordingStream || undefined} />
-                    {status === 'RECORDING' && (
-                       <div className="absolute top-4 right-4 sm:right-6 flex items-center gap-2 px-3 py-1 bg-red-500/20 rounded-full border border-red-500/30">
-                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                          <span className="text-[8px] font-black uppercase tracking-widest text-red-500">Live Ingest</span>
+                  {showUrlPanel && (
+                    <form onSubmit={handleUrlUplink} className="mt-10 p-10 rounded-[3rem] border border-indigo-600/30 bg-indigo-600/5 space-y-8 animate-in slide-in-from-top-4 duration-500">
+                       <div className="flex items-center gap-4">
+                          <Link className="w-5 h-5 text-indigo-600" />
+                          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-700">REMOTE_BIOMETRIC_UPLINK</p>
                        </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={status === 'RECORDING' ? stopRecording : startRecording} disabled={status === 'ANALYZING'} className={`flex flex-col items-center gap-3 sm:gap-4 py-6 sm:py-8 rounded-[2rem] sm:rounded-[3rem] border-2 transition-all group ${status === 'RECORDING' ? 'bg-red-500/10 border-red-500 text-red-500 shadow-lg' : theme === 'DARK' ? 'bg-white/5 border-white/5 text-slate-400 hover:border-indigo-500/40 hover:text-indigo-400' : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-indigo-600'}`}>
-                      <Mic className={`w-6 h-6 sm:w-8 sm:h-8 transition-transform ${status === 'RECORDING' ? 'scale-110' : 'group-hover:scale-110'}`} />
-                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em]">{status === 'RECORDING' ? 'BREAK LINK' : 'CAPTURE LIVE'}</span>
-                    </button>
-                    <button onClick={() => fileInputRef.current?.click()} disabled={status === 'ANALYZING'} className={`flex flex-col items-center gap-3 sm:gap-4 py-6 sm:py-8 rounded-[2rem] sm:rounded-[3rem] border-2 transition-all group ${theme === 'DARK' ? 'bg-white/5 border-white/5 text-slate-400 hover:border-indigo-500/40 hover:text-indigo-400' : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-indigo-600'}`}>
-                      <Upload className="w-6 h-6 sm:w-8 sm:h-8 transition-transform group-hover:scale-110" />
-                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em]">IMPORT DATA</span>
-                    </button>
-                    <input ref={fileInputRef} type="file" accept="audio/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setAudioFile(f); runAnalysis(f); } }} className="hidden" />
-                  </div>
-                </div>
-
-                {audioFile && (
-                  <div className={`mt-8 sm:mt-10 p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border glass flex items-center justify-between animate-in slide-in-from-bottom-4 ${theme === 'DARK' ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-200'}`}>
-                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                      <div className={`p-2.5 sm:p-3 rounded-xl ${theme === 'DARK' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-600 text-white'}`}><FileText className="w-4 h-4 sm:w-5 sm:h-5" /></div>
-                      <div className="overflow-hidden">
-                        <p className="text-[10px] sm:text-[11px] font-black uppercase truncate pr-4">{audioFile instanceof File ? audioFile.name : 'captured_biometric.wav'}</p>
-                        <p className={`text-[8px] font-black uppercase tracking-widest opacity-60 mt-0.5`}>Buffer Ready</p>
-                      </div>
-                    </div>
-                    <button onClick={reset} className={`p-2 transition-all hover:scale-110 text-slate-400 hover:text-red-500`}><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                  </div>
-                )}
-              </section>
-
-              <section className={`p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border glass ${cardClass}`}>
-                <div className="flex items-center gap-3 mb-6">
-                  <History className={`w-4 h-4 ${accentText}`} />
-                  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em]">Interception Log</h3>
-                </div>
-                <div className="space-y-3">
-                  {history.length > 0 ? history.slice(0, 3).map(h => (
-                    <div key={h.id} className={`p-4 rounded-xl sm:rounded-2xl border ${theme === 'DARK' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'} flex items-center justify-between`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${h.is_scam || h.classification === 'AI_GENERATED' ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-emerald-500 shadow-[0_0_8px_#10b981]'}`} />
-                        <span className="text-[9px] sm:text-[10px] font-bold uppercase truncate max-w-[100px] sm:max-w-[120px]">{h.is_scam ? 'Threat' : 'Secure'}</span>
-                      </div>
-                      <span className="text-[8px] sm:text-[9px] opacity-40 uppercase font-mono">{new Date(h.timestamp).toLocaleDateString()}</span>
-                    </div>
-                  )) : (
-                    <p className="text-[9px] opacity-30 uppercase font-bold text-center py-4 tracking-widest italic">Signal history empty</p>
+                       <input type="url" value={audioUrl} onChange={(e) => setAudioUrl(e.target.value)} placeholder="https://source.com/signal.mp3" className={`w-full py-5 px-8 rounded-2xl border outline-none font-bold text-sm ${theme === 'DARK' ? 'bg-black/60 border-white/10 text-white focus:border-indigo-500' : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-700'}`} required />
+                       <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase tracking-[0.5em] shadow-xl text-xs hover:bg-indigo-700 transition-all">EXTRACT REMOTE SIGNAL</button>
+                    </form>
                   )}
-                </div>
-              </section>
+
+                  {audioFile && (
+                    <div className={`mt-10 p-8 rounded-[3.5rem] border flex items-center justify-between shadow-2xl ${theme === 'DARK' ? 'bg-indigo-600/10 border-indigo-500/40' : 'bg-indigo-50 border-indigo-300'}`}>
+                       <div className="flex items-center gap-6 overflow-hidden">
+                          <FileText className={`w-10 h-10 ${accentText}`} />
+                          <div className="truncate">
+                             <p className={`font-black uppercase text-base truncate ${headingText}`}>{audioFile instanceof File ? audioFile.name : 'signal_buffer.bin'}</p>
+                             <p className={`text-[10px] font-bold uppercase tracking-[0.5em] ${mutedText}`}>SOURCE_LOCKED</p>
+                          </div>
+                       </div>
+                       <button onClick={reset} className="p-4 text-red-500 hover:bg-red-500/10 rounded-2xl transition-all"><X className="w-7 h-7" /></button>
+                    </div>
+                  )}
+               </section>
             </div>
 
-            {/* RESULTS PANEL */}
-            <section id="result-view" className={`p-6 sm:p-10 lg:p-12 rounded-[2.5rem] sm:rounded-[3.5rem] border glass flex flex-col justify-center items-center min-h-[450px] sm:min-h-[550px] transition-all duration-700 relative overflow-hidden ${cardClass}`}>
-              {status === 'ERROR' && (
-                <div className="text-center space-y-6 sm:space-y-8 w-full animate-in zoom-in">
-                  <div className={`p-8 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border-2 space-y-6 ${theme === 'DARK' ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200 shadow-xl'}`}>
-                    <AlertTriangle className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-red-500" />
-                    <div className="space-y-2">
-                      <h3 className="text-xl sm:text-2xl font-black font-futuristic uppercase tracking-widest text-red-500 leading-tight">UPLINK FAULT</h3>
-                      <p className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-widest leading-relaxed max-w-xs mx-auto ${theme === 'DARK' ? 'text-white/80' : 'text-slate-800'}`}>{errorMessage}</p>
-                    </div>
+            {/* FORENSIC READOUT PANEL */}
+            <section className={`p-8 sm:p-20 rounded-[4rem] sm:rounded-[6rem] border glass flex flex-col justify-center items-center h-full min-h-[600px] sm:min-h-[850px] transition-all relative overflow-hidden ${cardClass}`}>
+               {status === 'ANALYZING' && (
+                  <div className="text-center space-y-12 sm:space-y-20">
+                     <div className="relative">
+                        <Radar className={`w-48 h-48 sm:w-64 h-64 mx-auto animate-spin-slow ${accentText} opacity-30`} />
+                        <Search className={`absolute inset-0 m-auto w-24 h-24 sm:w-32 h-32 animate-pulse ${accentText}`} />
+                     </div>
+                     <div className="space-y-6">
+                        <h3 className={`text-4xl sm:text-6xl font-black font-futuristic uppercase tracking-[0.5em] ${headingText}`}>ANALYZING</h3>
+                        <p className={`text-[12px] sm:text-[14px] font-black uppercase tracking-[1em] ${accentText}`}>Verifying Bio-Signatures</p>
+                     </div>
                   </div>
-                  <div className="flex flex-col gap-4">
-                    <button onClick={() => runAnalysis()} className={`px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] bg-indigo-600 text-white shadow-lg active:scale-95 transition-all`}>RE-SYNC CORE</button>
-                    <button onClick={reset} className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40 hover:opacity-100 transition-opacity">Abort Extraction</button>
-                  </div>
-                </div>
-              )}
+               )}
 
-              {status === 'IDLE' && !result && (
-                <div className="text-center space-y-8 sm:space-y-10 opacity-20">
-                  <Radar className={`w-20 h-20 sm:w-28 sm:h-28 mx-auto ${theme === 'DARK' ? 'text-indigo-500 animate-spin-slow' : 'text-slate-400'}`} />
-                  <div className="space-y-2">
-                    <h3 className="text-lg sm:text-xl font-bold font-futuristic uppercase tracking-widest text-indigo-500">Standby Mode</h3>
-                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.4em] max-w-xs mx-auto leading-relaxed">System ready for signal ingestion.</p>
-                  </div>
-                </div>
-              )}
-
-              {status === 'ANALYZING' && (
-                <div className="text-center space-y-10 sm:space-y-12">
-                  <div className="relative">
-                    <Search className="w-24 h-24 sm:w-36 sm:h-36 mx-auto text-indigo-500 animate-pulse" />
-                    <div className={`absolute inset-0 border-[4px] sm:border-[6px] rounded-full animate-spin border-transparent border-t-indigo-500`}></div>
-                  </div>
-                  <div className="space-y-4">
-                    <h3 className="text-2xl sm:text-3xl font-black font-futuristic uppercase tracking-[0.2em] animate-pulse">Neural Scan...</h3>
-                    <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.5em] ${accentText}`}>Verifying Biometric Signature</p>
-                  </div>
-                </div>
-              )}
-
-              {result && !result.language_match && (
-                <div className="text-center space-y-8 sm:space-y-10 w-full animate-in zoom-in">
-                  <div className={`p-8 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border-2 border-amber-500/30 space-y-8 ${theme === 'DARK' ? 'bg-amber-500/10' : 'bg-amber-50 shadow-xl'}`}>
-                    <MessageSquareWarning className="w-16 h-16 sm:w-20 sm:h-20 mx-auto text-amber-500 animate-pulse" />
-                    <div className="space-y-5">
-                      <h3 className="text-xl sm:text-2xl font-black font-futuristic uppercase tracking-widest text-amber-500 leading-tight">PHASING ERROR</h3>
-                      <div className={`p-4 sm:p-6 rounded-2xl border ${theme === 'DARK' ? 'bg-black/40 border-amber-500/20' : 'bg-white border-amber-200'}`}>
-                        <p className={`text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.15em] leading-relaxed ${theme === 'DARK' ? 'text-white' : 'text-slate-800'}`}>
-                          {result.forensic_report}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={reset} className="px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] bg-indigo-600 text-white shadow-lg active:scale-95 transition-all">Re-Calibrate Locale</button>
-                </div>
-              )}
-
-              {(status === 'COMPLETED' || (result && result.language_match)) && result && (
-                <div className="w-full space-y-8 sm:space-y-10 animate-in fade-in duration-1000">
-                  <div className="text-center space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <p className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.6em] ${accentText}`}>EXTRACTION VERDICT</p>
-                      <h2 className={`text-3xl sm:text-4xl lg:text-6xl font-black font-futuristic tracking-tighter uppercase leading-none ${result.is_scam || result.classification === 'AI_GENERATED' ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {result.is_scam || result.classification === 'AI_GENERATED' ? (
-                          <span className="flex flex-col items-center gap-4">
-                            <ShieldAlert className="w-16 h-16 sm:w-20 sm:h-20 animate-pulse" />
-                            {result.is_scam ? 'THREAT DETECTED' : 'SYNTHETIC SIGNAL'}
-                          </span>
-                        ) : (
-                          <span className="flex flex-col items-center gap-4">
-                            <ShieldCheck className="w-16 h-16 sm:w-20 sm:h-20" />
-                            VERIFIED HUMAN
-                          </span>
-                        )}
-                      </h2>
-                      
-                      <div className="flex items-center justify-center gap-4 mt-4 sm:mt-6">
-                        <div className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full border flex items-center gap-3 ${result.is_scam || result.classification === 'AI_GENERATED' ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'}`}>
-                           <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">{result.is_scam ? 'CRITICAL ALERT' : 'SECURE LINE'}</span>
+               {result && (
+                  <div className="w-full space-y-16 animate-in zoom-in duration-1000">
+                     <div className="text-center space-y-12">
+                        <div className="flex flex-col items-center gap-10">
+                           {(!result.language_match) ? (
+                             <>
+                               <div className="p-14 sm:p-20 rounded-[5rem] bg-amber-600/10 border-2 border-amber-600/50 animate-pulse">
+                                  <Globe className="w-32 h-32 sm:w-48 h-48 text-amber-600" />
+                               </div>
+                               <div className="space-y-6 px-6">
+                                  <h2 className="text-5xl sm:text-8xl font-black font-futuristic uppercase tracking-tighter text-amber-600 leading-none">GATEWAY_FAULT</h2>
+                                  <p className="text-[14px] sm:text-[20px] font-black uppercase tracking-[0.5em] text-amber-700 opacity-90">Selected language does not match detected audio language</p>
+                                  <div className="mt-10 p-8 rounded-[2rem] bg-amber-600 text-white text-[12px] sm:text-[16px] font-black uppercase tracking-[0.3em] mx-auto w-fit shadow-2xl">
+                                     EXPECTED: {language.toUpperCase()} | DETECTED: {result.detected_language.toUpperCase()}
+                                  </div>
+                               </div>
+                             </>
+                           ) : result.classification === 'AI_GENERATED' ? (
+                             <>
+                               <div className="p-14 sm:p-20 rounded-[5rem] bg-red-600/10 border-2 border-red-600/50 animate-pulse shadow-[0_0_100px_rgba(220,38,38,0.25)]">
+                                  <ShieldAlert className="w-32 h-32 sm:w-48 h-48 text-red-600" />
+                               </div>
+                               <div className="space-y-6 px-6">
+                                  <h2 className="text-5xl sm:text-8xl font-black font-futuristic uppercase tracking-tighter text-red-600 leading-none">AI_GENERATED</h2>
+                                  <p className="text-[14px] sm:text-[20px] font-black uppercase tracking-[0.5em] text-red-500 opacity-90">FRAUD VOICE DETECTED</p>
+                               </div>
+                             </>
+                           ) : (
+                             <>
+                               <div className="p-14 sm:p-20 rounded-[5rem] bg-emerald-600/10 border-2 border-emerald-600/50 shadow-[0_0_100px_rgba(5,150,105,0.15)]">
+                                  <ShieldCheck className="w-32 h-32 sm:w-48 h-48 text-emerald-600" />
+                               </div>
+                               <div className="space-y-6 px-6">
+                                  <h2 className="text-5xl sm:text-8xl font-black font-futuristic uppercase tracking-tighter text-emerald-600 leading-none">HUMAN</h2>
+                                  <p className="text-[14px] sm:text-[20px] font-black uppercase tracking-[0.5em] text-emerald-700 opacity-90">ORIGINAL VOICE VERIFIED</p>
+                               </div>
+                             </>
+                           )}
                         </div>
-                      </div>
-                    </div>
+                        <div className="flex flex-col sm:flex-row gap-10 items-center justify-center">
+                           <RiskMeter score={result.confidence_score} level={result.fraud_risk_level} theme={theme} />
+                           <div className={`p-8 rounded-[3rem] border-2 max-w-sm ${theme === 'DARK' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center gap-3 mb-4">
+                                 <AlertCircle className={`w-5 h-5 ${result.classification === 'AI_GENERATED' ? 'text-red-500' : 'text-emerald-500'}`} />
+                                 <h5 className={`text-[11px] font-black uppercase tracking-widest ${mutedText}`}>Forensic Summary</h5>
+                              </div>
+                              <p className={`text-sm font-bold uppercase tracking-tight leading-relaxed italic ${theme === 'DARK' ? 'text-slate-300' : 'text-slate-900'}`}>{result.analysis_summary}</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               )}
 
-                    {result.scam_keywords.length > 0 && (
-                      <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-6">
-                        {result.scam_keywords.map((kw, idx) => (
-                          <span key={idx} className="px-2.5 py-1 rounded-full bg-red-500/20 text-red-500 text-[8px] sm:text-[9px] font-black uppercase border border-red-500/30 flex items-center gap-2">
-                            <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {kw}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+               {status === 'IDLE' && (
+                  <div className="text-center space-y-12 sm:space-y-20 opacity-60">
+                     <Radar className={`w-40 h-40 sm:w-64 h-64 mx-auto ${theme === 'DARK' ? 'text-indigo-500 animate-spin-slow' : 'text-slate-400'}`} />
+                     <div className="space-y-6">
+                        <h3 className={`text-3xl sm:text-4xl font-black font-futuristic uppercase tracking-[0.4em] ${accentText}`}>TERMINAL READY</h3>
+                        <p className={`text-[12px] sm:text-[16px] font-black uppercase tracking-[0.6em] max-w-xs sm:max-w-md mx-auto leading-relaxed ${subtextClass}`}>Monitoring gateway for biometric signal ingestion. Selective node: {language}.</p>
+                     </div>
                   </div>
-                  
-                  <RiskMeter score={result.confidence_score} level={result.fraud_risk_level} />
-                  
-                  <div className={`p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border glass ${theme === 'DARK' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200 shadow-inner'}`}>
-                     <p className={`text-[10px] sm:text-[12px] font-bold uppercase tracking-widest leading-relaxed italic text-center ${subtextClass}`}>
-                       "{result.forensic_report}"
-                     </p>
+               )}
+
+               {status === 'ERROR' && (
+                  <div className="text-center space-y-10 sm:space-y-14 animate-in zoom-in p-6 sm:p-12">
+                     <AlertTriangle className="w-24 h-24 sm:w-40 h-40 mx-auto text-red-600" />
+                     <div className="space-y-4 sm:space-y-6">
+                        <h3 className="text-4xl sm:text-5xl font-black font-futuristic uppercase text-red-600 tracking-tighter">UPLINK_FAULT</h3>
+                        <div className={`p-8 rounded-[2.5rem] border-2 border-red-500/20 bg-red-500/5 font-bold uppercase tracking-widest text-sm sm:text-base ${theme === 'DARK' ? 'text-red-400' : 'text-red-900'}`}>{errorMessage}</div>
+                     </div>
+                     <button onClick={reset} className="px-16 sm:px-24 py-5 sm:py-8 rounded-[2rem] sm:rounded-[4rem] font-black uppercase text-xs sm:text-sm bg-indigo-600 text-white shadow-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-4 mx-auto">
+                        <RefreshCcw className="w-5 h-5" /> RE-SYNC CORE SYSTEM
+                     </button>
                   </div>
-                </div>
-              )}
+               )}
             </section>
           </div>
         )}
 
-        {result && result.language_match && (
-          <div className="space-y-8 sm:space-y-10 animate-in slide-in-from-bottom-12 duration-700 pb-10">
-            <div className="flex items-center gap-3 sm:gap-4 px-2 sm:px-4">
-               <Zap className={`w-4 h-4 sm:w-5 sm:h-5 ${accentText}`} />
-               <h3 className="text-lg sm:text-xl font-black font-futuristic tracking-[0.2em] uppercase">Deep Intelligence Matrix</h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-               <AnalysisLayer label="Behavioral Forensics" tamilLabel="நடத்தை" description={result.analysis_layers.behavioral_threats} isCompleted={true} />
-               <AnalysisLayer label="Pattern Matrix" tamilLabel="அமைப்பு" description={result.analysis_layers.spectral_artifacts} isCompleted={true} />
-               <AnalysisLayer label="Spatial Origin" tamilLabel="இடம்" description={result.analysis_layers.spatial_acoustics} isCompleted={true} />
-               <AnalysisLayer label="Neural Micro-Dynamics" tamilLabel="உணர்ச்சி" description={result.analysis_layers.emotional_micro_dynamics} isCompleted={true} />
-               <AnalysisLayer label="Respiratory Sync" tamilLabel="சுவாசம்" description={result.analysis_layers.breath_emotion_sync} isCompleted={true} />
-               <AnalysisLayer label="Linguistic Marker" tamilLabel="டிஜிட்டல்" description={result.detected_language} isCompleted={true} />
-            </div>
-            
-            {(result.is_scam || result.classification === 'AI_GENERATED') && (
-              <div className="p-8 sm:p-14 rounded-[2.5rem] sm:rounded-[3.5rem] bg-red-500/5 border-2 border-red-500/20 glass space-y-6 sm:space-y-8 animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.15)]">
-                <div className="flex flex-col items-center md:items-start gap-3 sm:gap-4 text-red-500">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <AlertTriangle className="w-8 h-8 sm:w-10 sm:h-10" />
-                    <h4 className="text-xl sm:text-2xl font-black uppercase tracking-widest">DEFENSE PROTOCOL ACTIVE</h4>
-                  </div>
-                  <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.3em] opacity-80">COUNTER-FRAUD OPERATIONS TRIGGERED</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                  {result.safety_actions.map((action, idx) => (
-                    <div key={idx} className="p-5 sm:p-6 rounded-[1.5rem] sm:rounded-3xl bg-red-500/10 border-2 border-red-500/10 flex items-start gap-4 transition-all hover:bg-red-500/20 group">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 mt-2 shrink-0 transition-transform group-hover:scale-125" />
-                      <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-red-400 leading-relaxed">{action}</p>
+        {result && (
+           <div className="space-y-12 sm:space-y-20 animate-in slide-in-from-bottom-20 duration-1000 pb-20 sm:pb-40">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-10 px-8">
+                 <div className="flex items-center gap-6 sm:gap-10">
+                    <div className="p-5 sm:p-7 rounded-[2rem] bg-indigo-600/10 text-indigo-700 border border-indigo-600/20 shadow-xl">
+                       <BarChart3 className="w-8 h-8 sm:w-12 h-12" />
                     </div>
-                  ))}
-                </div>
+                    <div className="space-y-1">
+                       <h3 className={`text-3xl sm:text-5xl font-black font-futuristic tracking-tighter uppercase ${headingText}`}>INTELLIGENCE MATRIX</h3>
+                       <p className={`text-[10px] sm:text-[12px] font-black uppercase tracking-[0.6em] ${mutedText}`}>SIGNAL BIOMETRIC DECOMPOSITION</p>
+                    </div>
+                 </div>
+                 <button className={`px-12 py-5 rounded-[2rem] bg-white border border-slate-300 text-slate-950 font-black uppercase text-[10px] tracking-widest flex items-center gap-4 shadow-xl hover:translate-y-[-4px] transition-all`}>
+                    <Download className="w-5 h-5" /> DOWNLOAD LOG
+                 </button>
               </div>
-            )}
 
-            <div className="flex flex-col md:flex-row gap-4 sm:gap-6 justify-center pt-8">
-              <button className={`px-10 sm:px-14 py-5 sm:py-7 rounded-[2.5rem] sm:rounded-[3rem] text-white font-black uppercase text-[10px] sm:text-[11px] tracking-[0.4em] shadow-2xl flex items-center justify-center gap-4 transition-all hover:translate-y-[-4px] ${theme === 'DARK' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-600 hover:bg-indigo-700 shadow-xl'}`}>
-                <Download className="w-5 h-5 sm:w-6 sm:h-6" /> EXPORT DEFENSE LOG
-              </button>
-              <button onClick={reset} className={`px-10 sm:px-14 py-5 sm:py-7 rounded-[2.5rem] sm:rounded-[3rem] border-2 font-black uppercase text-[10px] sm:text-[11px] tracking-[0.4em] transition-all hover:translate-y-[-4px] ${theme === 'DARK' ? 'border-white/10 text-slate-400 hover:text-white' : 'border-slate-300 text-slate-500 hover:text-slate-900'}`}>
-                <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5" /> RE-CALIBRATE SYSTEM
-              </button>
-            </div>
-          </div>
-        )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-12">
+                 <AnalysisLayer label="Spatial Acoustics" localizedLabel={meta.layers.spatial} description={result.analysis_layers.spatial_acoustics} isCompleted={true} theme={theme} />
+                 <AnalysisLayer label="Emotional Micro-Tremor" localizedLabel={meta.layers.emotional} description={result.analysis_layers.emotional_micro_dynamics} isCompleted={true} theme={theme} />
+                 <AnalysisLayer label="Cultural Phonetics" localizedLabel={meta.layers.cultural} description={result.analysis_layers.cultural_linguistics} isCompleted={true} theme={theme} />
+                 <AnalysisLayer label="Respiratory Sync" localizedLabel={meta.layers.respiratory} description={result.analysis_layers.breath_emotion_sync} isCompleted={true} theme={theme} />
+                 <AnalysisLayer label="Spectral Artifacts" localizedLabel={meta.layers.spectral} description={result.analysis_layers.spectral_artifacts} isCompleted={true} theme={theme} />
+                 <AnalysisLayer label="Linguistic Marker" localizedLabel={meta.layers.linguistic} description={result.analysis_layers.code_switching} isCompleted={true} theme={theme} />
+              </div>
 
-        {status === 'IDLE' && (
-          <div className={`p-8 sm:p-14 rounded-[3rem] sm:rounded-[4rem] border glass flex flex-col md:flex-row items-center gap-8 sm:gap-10 shadow-2xl transition-all ${cardClass}`}>
-            <div className={`p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] transition-colors ${theme === 'DARK' ? 'bg-indigo-600/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-              <Cpu className="w-10 h-10 sm:w-12 sm:h-12" />
-            </div>
-            <div className="space-y-3 sm:space-y-4 flex-1 text-center md:text-left">
-              <h4 className={`text-[10px] sm:text-[12px] font-black uppercase tracking-[0.4em] ${accentText}`}>CORE PROCESSING ACTIVE</h4>
-              <p className={`text-xs sm:text-sm font-bold uppercase tracking-wider leading-relaxed opacity-60 ${subtextClass}`}>VOICE TRUTH SCANNER ELITE utilizes 2026-gen neural patterns to distinguish human authenticity from synthetic constructs. Our zero-knowledge protocol ensures all biometric metadata is purged within 300ms of final extraction.</p>
-            </div>
-          </div>
+              <div className="flex justify-center pt-10">
+                 <button onClick={reset} className="w-full sm:w-auto px-16 sm:px-32 py-8 sm:py-12 rounded-[2rem] sm:rounded-[6rem] bg-indigo-600 text-white font-black uppercase tracking-[0.5em] sm:tracking-[0.8em] shadow-[0_40px_80px_rgba(79,70,229,0.3)] hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 transition-all text-sm sm:text-base flex items-center justify-center gap-8">
+                    <RefreshCcw className="w-8 h-8" /> NEW SIGNAL EXTRACTION
+                 </button>
+              </div>
+           </div>
         )}
       </main>
 
-      <footer className={`py-12 sm:py-16 border-t transition-all ${theme === 'DARK' ? 'border-white/5 text-slate-600' : 'border-slate-200 text-slate-400'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8">
-          <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.4em] sm:tracking-[0.8em] text-center">© 2026 TRUTH SCANNER ELITE • PROTECTING THE DIGITAL FRONTIER</p>
-          <div className="flex gap-6 sm:gap-10">
-            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.3em] opacity-40">Privacy</span>
-            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.3em] opacity-40">Status</span>
-            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.3em] opacity-40">Help</span>
-          </div>
-        </div>
+      <footer className={`py-14 sm:py-24 border-t transition-colors mt-auto ${theme === 'DARK' ? 'border-white/5 text-slate-700' : 'border-slate-300 text-slate-600'}`}>
+         <div className="max-w-7xl mx-auto px-8 sm:px-14 flex flex-col md:flex-row justify-between items-center gap-10 sm:gap-16">
+            <div className="flex flex-col md:flex-row items-center gap-6 sm:gap-10">
+               <Shield className="w-6 h-6 sm:w-8 h-8 opacity-20" />
+               <div className="text-center md:text-left">
+                  <p className="text-[11px] sm:text-[14px] font-black uppercase tracking-[0.4em] sm:tracking-[0.6em] leading-none mb-2">VOICE TRUTH SCANNER v4.5 © 2026</p>
+                  <p className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.3em] opacity-40`}>OPERATIONAL INFRASTRUCTURE BY GLOBAL SAFETY ALLIANCE</p>
+               </div>
+            </div>
+            <div className="flex flex-wrap justify-center gap-8 sm:gap-16">
+               {['NETWORK_STATUS: SECURE', 'LEGAL_COMPLIANCE', 'PRIVACY_PROTOCOL', 'UPLINK_ENCRYPTION: AES-512'].map(i => (
+                 <span key={i} className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 cursor-pointer transition-all">{i}</span>
+               ))}
+            </div>
+         </div>
       </footer>
     </div>
   );

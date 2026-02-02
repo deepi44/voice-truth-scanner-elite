@@ -1,6 +1,19 @@
 {
   "name": "VOICE TRUTH SCANNER ELITE",
+  "short_name": "TruthScanner",
   "description": "Enterprise-grade AI fraud detection and user safety application for real-time forensic voice analysis (2026 Edition).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#010409",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1067/1067256.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
   "requestFramePermissions": [
     "microphone"
   ]
