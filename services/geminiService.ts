@@ -34,13 +34,15 @@ export const analyzeForensicInput = async (
   parts.push({
     text: `VOICE TRUTH SCANNER ELITE v5.2 - BUILDATHON PROTOCOL
     CONTEXT: India AI User Safety & Fraud Prevention
-    EXPECTED_LANGUAGE: ${language}
+    REQUIRED_GATEWAY_LANGUAGE: ${language}
     
     INSTRUCTION:
-    1. STAGE 1 (Behavioral): Detect Bank/OTP/Threat urgency. Detect linguistic manipulation.
-    2. STAGE 2 (Forensics): If audio, analyze 6 layers (Spatial, Emotional Micro-Dynamics, Cultural Phonetics, Breath Sync, Spectral Artifacts, Code-Switch Flow).
+    1. LANGUAGE VERIFICATION: Detect the primary language of the input. If it is NOT ${language}, set "language_match": false and "final_verdict": "CAUTION".
+    2. STAGE 1 (Behavioral): Detect Bank/OTP/Threat urgency. Detect linguistic manipulation.
+    3. STAGE 2 (Forensics): If audio, analyze 6 layers (Spatial, Emotional Micro-Dynamics, Cultural Phonetics, Breath Sync, Spectral Artifacts, Code-Switch Flow).
     
     DECISION TREE:
+    - LANGUAGE MISMATCH -> CAUTION (Mandatory alert)
     - LOW risk + HUMAN voice -> SAFE
     - LOW risk + AI voice -> AI_GENERATED_FRAUD
     - MEDIUM risk + HUMAN voice -> CAUTION
@@ -106,10 +108,6 @@ export const startLiveForensics = async (
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Note: Using a simplified version for hackathon simulation that uses generateContent 
-  // on a recurring loop to maintain state across 'chunks' as per the user's '2-3 second chunks' request
-  // while adhering to buildathon 'instantly alerts' requirement.
-  
   return {
     processChunk: async (blob: Blob) => {
       const base64 = await fileToBase64(blob);
@@ -117,7 +115,9 @@ export const startLiveForensics = async (
         model: 'gemini-3-flash-preview',
         contents: [
           { inlineData: { data: base64, mimeType: 'audio/webm' } },
-          { text: `LIVE_FORENSIC_CHUNK: Detect AI voice clone or scam intent. Selected: ${language}. Output JSON: {"verdict": "Verdict", "confidence": 0-1, "current_intent": "intent string", "is_mismatch": boolean}` }
+          { text: `LIVE_FORENSIC_CHUNK: Detect AI voice clone or scam intent. Selected Gateway: ${language}. 
+          CRITICAL: If the detected language is NOT ${language}, set "is_mismatch": true.
+          Output JSON: {"verdict": "Verdict", "confidence": 0-1, "current_intent": "intent string", "is_mismatch": boolean}` }
         ],
         config: { responseMimeType: "application/json" }
       });

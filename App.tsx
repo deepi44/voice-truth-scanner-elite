@@ -203,7 +203,7 @@ const App: React.FC = () => {
              </div>
              
              {liveUpdate && (
-               <div className={`p-10 rounded-[4rem] border-4 bg-black/60 shadow-2xl space-y-8 min-w-[320px] sm:min-w-[600px] border-${liveUpdate.verdict === 'BLOCK_NOW' ? 'red' : 'indigo'}-600`}>
+               <div className={`p-10 rounded-[4rem] border-4 bg-black/60 shadow-2xl space-y-8 min-w-[320px] sm:min-w-[600px] border-${liveUpdate.verdict === 'BLOCK_NOW' || liveUpdate.is_mismatch ? 'red' : 'indigo'}-600`}>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-10">
                      <div className="text-center">
                         <span className="text-7xl font-black font-futuristic text-white">{Math.round(liveUpdate.confidence * 100)}%</span>
@@ -211,8 +211,8 @@ const App: React.FC = () => {
                      </div>
                      <div className="h-20 w-[2px] bg-white/10 hidden sm:block" />
                      <div className="text-center">
-                        <span className={`text-4xl font-black uppercase tracking-widest ${liveUpdate.verdict === 'SAFE' ? 'text-emerald-500' : 'text-red-600'}`}>
-                           {liveUpdate.verdict.replace('_', ' ')}
+                        <span className={`text-4xl font-black uppercase tracking-widest ${liveUpdate.is_mismatch ? 'text-red-600' : liveUpdate.verdict === 'SAFE' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                           {liveUpdate.is_mismatch ? 'MISMATCH' : liveUpdate.verdict.replace('_', ' ')}
                         </span>
                         <p className="text-[12px] font-black uppercase tracking-widest text-slate-500">VERDICT</p>
                      </div>
@@ -222,9 +222,12 @@ const App: React.FC = () => {
                      <p className="text-lg font-bold text-white italic">{liveUpdate.current_intent}</p>
                   </div>
                   {liveUpdate.is_mismatch && (
-                    <div className="p-6 bg-amber-600 rounded-3xl flex items-center gap-6 animate-bounce">
-                       <AlertTriangle className="w-10 h-10 text-white" />
-                       <p className="text-sm font-black uppercase tracking-widest text-white">Language Mismatch: Gateway Failure Possible</p>
+                    <div className="p-10 rounded-[2.5rem] bg-red-600 text-white space-y-4 animate-bounce border-4 border-white/20 shadow-[0_0_50px_rgba(220,38,38,1)]">
+                       <div className="flex items-center justify-center gap-6">
+                          <AlertTriangle className="w-12 h-12 text-white" />
+                          <p className="text-2xl font-black uppercase tracking-tighter">Audio language mismatch detected – verification failed</p>
+                       </div>
+                       <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Input signal conflicts with {language} gateway encryption.</p>
                     </div>
                   )}
                </div>
@@ -241,9 +244,9 @@ const App: React.FC = () => {
              <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
                 {[
                   { l: 'Network Loads', v: history.length, i: Activity, c: 'text-indigo-500' },
-                  { l: 'Fraud Blocks', v: history.filter(h => h.risk_level === 'HIGH').length, i: ShieldAlert, c: 'text-red-600' },
+                  { l: 'Fraud Blocks', v: history.filter(h => h.risk_level === 'HIGH' || !h.language_match).length, i: ShieldAlert, c: 'text-red-600' },
                   { l: 'Active Nodes', v: '07', i: Network, c: 'text-amber-500' },
-                  { l: 'Human Pass', v: history.filter(h => h.risk_level === 'LOW').length, i: ShieldCheck, c: 'text-emerald-500' }
+                  { l: 'Human Pass', v: history.filter(h => h.risk_level === 'LOW' && h.language_match).length, i: ShieldCheck, c: 'text-emerald-500' }
                 ].map((s, idx) => (
                   <div key={idx} className={`p-8 rounded-[2.5rem] border glass ${cardClass} flex flex-col justify-between h-44`}>
                     <div className="flex justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{s.l}</span><s.i className={`w-6 h-6 ${s.c}`} /></div>
@@ -261,10 +264,10 @@ const App: React.FC = () => {
                         {history.map(h => (
                           <tr key={h.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                              <td className="p-8 font-mono text-xs opacity-50">{h.id.slice(0, 12)}...</td>
-                             <td className="p-8 font-black uppercase">{h.detected_language}</td>
+                             <td className="p-8 font-black uppercase">{h.detected_language} {!h.language_match && '⚠️'}</td>
                              <td className="p-8">
-                                <span className={`px-4 py-2 rounded-xl text-[10px] font-black border ${h.risk_level === 'HIGH' ? 'bg-red-600/10 text-red-600 border-red-600/20' : 'bg-emerald-600/10 text-emerald-600 border-emerald-600/20'}`}>
-                                   {h.final_verdict}
+                                <span className={`px-4 py-2 rounded-xl text-[10px] font-black border ${h.risk_level === 'HIGH' || !h.language_match ? 'bg-red-600/10 text-red-600 border-red-600/20' : 'bg-emerald-600/10 text-emerald-600 border-emerald-500/20'}`}>
+                                   {!h.language_match ? 'GATEWAY_ERROR' : h.final_verdict}
                                 </span>
                              </td>
                              <td className="p-8 text-right font-black text-2xl">{Math.round(h.confidence_score * 100)}%</td>
@@ -325,20 +328,29 @@ const App: React.FC = () => {
                 )}
                 {result && (
                   <div className="w-full space-y-12 animate-in zoom-in duration-700">
+                     {!result.language_match && (
+                        <div className="p-10 rounded-[3rem] bg-red-600 text-white flex flex-col items-center text-center gap-6 shadow-[0_0_50px_rgba(220,38,38,0.5)] border-4 border-white/10 mb-10 animate-in slide-in-from-top-10">
+                           <div className="flex items-center gap-6">
+                              <Globe className="w-16 h-16 text-white animate-pulse" />
+                              <h3 className="text-2xl font-black uppercase tracking-tighter">Audio language mismatch detected – verification failed</h3>
+                           </div>
+                           <p className="text-sm font-bold opacity-80 uppercase tracking-widest">Detected: {result.detected_language} | Gateway: {language}</p>
+                        </div>
+                     )}
                      <div className="text-center space-y-10">
                         <div className="flex flex-col items-center gap-8">
-                           <div className={`p-16 rounded-[6rem] border-4 shadow-[0_0_80px_rgba(220,38,38,0.1)] ${result.risk_level === 'HIGH' ? 'bg-red-600/10 border-red-600' : 'bg-emerald-600/10 border-emerald-600'}`}>
-                              {result.risk_level === 'HIGH' ? <ShieldAlert className="w-32 h-32 text-red-600" /> : <ShieldCheck className="w-32 h-32 text-emerald-600" />}
+                           <div className={`p-16 rounded-[6rem] border-4 shadow-[0_0_80px_rgba(220,38,38,0.1)] ${result.risk_level === 'HIGH' || !result.language_match ? 'bg-red-600/10 border-red-600' : 'bg-emerald-600/10 border-emerald-600'}`}>
+                              {result.risk_level === 'HIGH' || !result.language_match ? <ShieldAlert className="w-32 h-32 text-red-600" /> : <ShieldCheck className="w-32 h-32 text-emerald-600" />}
                            </div>
                            <div className="space-y-4">
-                              <h2 className={`text-6xl font-black font-futuristic uppercase tracking-tighter ${result.risk_level === 'HIGH' ? 'text-red-600' : 'text-emerald-600'}`}>
-                                 {result.final_verdict.replace('_', ' ')}
+                              <h2 className={`text-6xl font-black font-futuristic uppercase tracking-tighter ${result.risk_level === 'HIGH' || !result.language_match ? 'text-red-600' : 'text-emerald-600'}`}>
+                                 {!result.language_match ? 'VERIFICATION FAILED' : result.final_verdict.replace('_', ' ')}
                               </h2>
                               <p className="text-[12px] font-black uppercase tracking-[0.5em] text-slate-500">SYSTEM_CONFIRMED: {result.detected_language}</p>
                            </div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-10 items-center justify-center">
-                           <RiskMeter score={result.confidence_score} level={result.risk_level} theme={theme} />
+                           <RiskMeter score={!result.language_match ? 1 : result.confidence_score} level={!result.language_match ? 'HIGH' : result.risk_level} theme={theme} />
                            <div className="p-8 rounded-[2.5rem] border border-white/5 bg-white/5 max-w-sm text-left">
                               <h5 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-4">FORENSIC_SNAPSHOT</h5>
                               <p className="text-sm font-bold uppercase leading-relaxed italic text-slate-300">"{result.spam_behavior.suspicious_phrases?.[0] || result.voice_forensics.analysis_layers.emotional_micro_dynamics}"</p>
