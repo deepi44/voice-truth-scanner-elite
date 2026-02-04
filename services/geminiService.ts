@@ -7,7 +7,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * VOICE TRUTH SCANNER ELITE - Core Forensic Engine (2026 Edition)
- * Synchronized with Production FastAPI Forensic Logic
+ * Optimized for real-time deepfake detection and multi-language scam analysis.
  */
 export const analyzeForensicInput = async (
   input: File | Blob | string,
@@ -27,62 +27,56 @@ export const analyzeForensicInput = async (
   }
 
   const systemInstruction = `You are the VOICE TRUTH SCANNER ELITE (2026 Edition).
-You are a production-ready AI Generated Voice Detection and Forensic system.
+You are a production-grade AI Voice Fraud Detection and Forensic engine.
 
-STRICT OPERATIONAL RULES:
-1. You accept audio as Base64 encoded strings (MP3/WAV).
-2. You support: Tamil, English, Hindi, Telugu, Malayalam, and Code-Mixed variations.
-3. Analyze for deepfake artifacts, robotic prosody, and synthetic harmonics.
-4. Respond ONLY in valid, parseable JSON.
-5. NO markdown formatting. NO code blocks (\`\`\`json). NO explanations.
-6. If the input is Base64, do not reject it; treat it as the primary forensic evidence.
+STRICT OPERATIONAL PARAMETERS:
+1. You analyze audio data (Base64) and SMS/Text content for cross-verification.
+2. You support: Tamil, English, Hindi, Telugu, Malayalam, and "Tanglish" (Tamil-English mix).
+3. Analyze for "Machan-da" timing (robotic cadence), 8-15Hz micro-tremor loss, and synthetic reverb patterns.
+4. If "sms_text" contains words like "otp", "bank", "sollunga", "pesren", flag as high-risk Tamil scam patterns.
 
-FORENSIC LAYER REQUIREMENTS:
-- spatial_acoustics: Identify synthetic reverb/ambience.
-- emotional_micro_dynamics: Detect missing 8-15Hz tremors typical of human speech.
-- cultural_linguistics: Evaluate slang timing (e.g., "machan-da" timing vs robotic cadence).
-- breath_emotion_sync: Check respiration correlation (human r > 0.7).
-- spectral_artifacts: Identify harmonic spikes (e.g., 87Hz spikes).
-- code_switching: Calculate transition entropy between languages.
+RESPONSE PROTOCOL:
+- Respond ONLY in valid, parseable JSON.
+- NO markdown formatting (no \`\`\`json). NO explanations.
+- If the input is Base64, analyze the voice for deepfake artifacts.
 
-JSON SCHEMA:
+REQUIRED JSON SCHEMA:
 {
   "final_verdict": "AI_GENERATED_FRAUD | CAUTION | SAFE | BLOCK_NOW",
   "confidence_score": number (0.0 to 1.0),
   "risk_level": "HIGH | MEDIUM | LOW",
   "spam_behavior": {
-    "language_detected": "string",
-    "scam_patterns": ["string"],
+    "language_detected": "string (e.g., Tamil-English mix)",
+    "scam_patterns": ["string (e.g., BANK_EMERGENCY, OTP_REQUEST)"],
     "spam_risk": "HIGH | MEDIUM | LOW"
   },
   "voice_forensics": {
     "classification": "AI_GENERATED | HUMAN",
     "analysis_layers": {
-      "spatial_acoustics": "string",
-      "emotional_micro_dynamics": "string",
-      "cultural_linguistics": "string",
-      "breath_emotion_sync": "string",
-      "spectral_artifacts": "string",
-      "code_switching": "string"
+      "spatial_acoustics": "string (e.g., Uniform 38ms reverb - synthetic)",
+      "emotional_micro_dynamics": "string (e.g., Missing 8-15Hz tremors - AI indicator)",
+      "cultural_linguistics": "string (e.g., Robotic machan-da timing)",
+      "breath_emotion_sync": "string (e.g., Algorithmic respiration)",
+      "spectral_artifacts": "string (e.g., 2026 AI fingerprints detected)",
+      "code_switching": "string (e.g., Patterned Tamil to English transitions)"
     }
   },
   "safety_actions": ["IGNORE", "BLOCK", "REPORT"],
   "forensic_evidence": {
     "timestamp": "ISO_STRING",
-    "sha256_hash": "HEX_STRING",
-    "blockchain_proof": "ipfs://CID"
+    "sha256_hash": "HEX_STRING (shortened)",
+    "blockchain_proof": "ipfs://QmXyz..."
   }
 }`;
 
   const prompt = `FORENSIC_ANALYSIS_REQUEST:
 {
-  "language": "${targetLanguage}",
-  "audio_format": "${mimeType.split('/')[1] || 'mp3'}",
-  "audio_base64": "${isText ? "N/A" : "DATA_STREAM_PROVIDED"}",
-  "sms_text": "${smsText || ""}"
+  "audio_base64": "${isText ? "N/A" : "DATA_STREAM_INCLUDED"}",
+  "sms_text": "${smsText || ""}",
+  "target_language": "${targetLanguage}"
 }
 
-Perform 6-layer forensic scan now. Return valid JSON only.`;
+Run 6-layer forensic scan. Check for Tamil/English linguistic roboticism. Return JSON only.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -99,7 +93,6 @@ Perform 6-layer forensic scan now. Return valid JSON only.`;
       },
     });
 
-    // Clean any unexpected non-JSON clutter from the string
     const text = response.text || "{}";
     const cleanJson = text.replace(/^```json/, '').replace(/```$/, '').trim();
     const parsed = JSON.parse(cleanJson);
@@ -117,6 +110,6 @@ Perform 6-layer forensic scan now. Return valid JSON only.`;
       return analyzeForensicInput(input, targetLanguage, smsText, retries - 1);
     }
     console.error("Forensic Error:", error);
-    throw new Error("FORENSIC_LINK_FAILURE: " + (error.message || "UNKNOWN_ERROR"));
+    throw new Error("FORENSIC_LINK_FAILURE");
   }
 };

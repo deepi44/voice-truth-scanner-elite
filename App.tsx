@@ -365,7 +365,7 @@ const App: React.FC = () => {
                   {status === 'ERROR' && (
                     <div className="text-center space-y-6">
                       <AlertTriangle className="w-16 h-16 sm:w-24 mx-auto text-red-600 animate-bounce" />
-                      <p className="text-xs sm:text-base font-black uppercase tracking-widest text-red-600">{errorMessage}</p>
+                      <p className="text-xs sm:text-base font-black uppercase tracking-widest text-red-600">{errorMessage || "TERMINAL_LINK_FAILURE"}</p>
                       <button onClick={reset} className="px-6 py-3 rounded-xl border border-red-600 text-red-600 font-black uppercase text-[10px]">RETRY_UPLINK</button>
                     </div>
                   )}
