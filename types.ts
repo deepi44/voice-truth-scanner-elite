@@ -17,6 +17,7 @@ export interface SpamBehavior {
   language_detected: string;
   scam_patterns: string[];
   spam_risk: RiskLevel;
+  suspicious_phrases?: string[];
 }
 
 export interface VoiceForensics {
@@ -38,7 +39,14 @@ export interface AnalysisResult {
   detected_language: string;
 }
 
-export type AppStatus = 'IDLE' | 'RECORDING' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
+export interface LiveUpdate {
+  verdict: Verdict;
+  confidence: number;
+  current_intent: string;
+  is_mismatch: boolean;
+}
+
+export type AppStatus = 'IDLE' | 'RECORDING' | 'LIVE_CALL' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
 
 export type SupportedLanguage = 'Tamil' | 'English' | 'Hindi' | 'Malayalam' | 'Telugu';
 
@@ -64,7 +72,7 @@ export const LANGUAGE_METADATA: Record<SupportedLanguage, {
   },
   Hindi: {
     nativeName: 'हिन्दी',
-    layers: { spatial: 'स्थानிக்', emotional: 'भावना', cultural: 'सांस्कृतिक', respiratory: 'श्वसन', spectral: 'स्पेक्ट्रल', linguistic: 'भाषा' }
+    layers: { spatial: 'स्थानिक', emotional: 'भावना', cultural: 'सांस्कृतिक', respiratory: 'श्वसन', spectral: 'स्पेक्ट्रल', linguistic: 'भाषा' }
   },
   Malayalam: {
     nativeName: 'മലയാളം',
@@ -72,6 +80,6 @@ export const LANGUAGE_METADATA: Record<SupportedLanguage, {
   },
   Telugu: {
     nativeName: 'తెలుగు',
-    layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట्रల్', linguistic: 'భాష' }
+    layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట్రల్', linguistic: 'భాష' }
   }
 };
