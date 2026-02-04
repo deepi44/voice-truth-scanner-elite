@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { RiskLevel, Theme } from '../types';
 
@@ -9,51 +8,71 @@ interface RiskMeterProps {
 }
 
 const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) => {
-  const radius = 70;
+  const radius = 85;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score * circumference);
 
-  const color = level === 'HIGH' ? '#dc2626' : level === 'MEDIUM' ? '#d97706' : '#059669';
+  const color = level === 'HIGH' ? '#dc2626' : level === 'MEDIUM' ? '#f59e0b' : '#10b981';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-10 rounded-[4rem] border backdrop-blur-xl transition-all ${
+    <div className={`relative flex flex-col items-center justify-center p-6 sm:p-14 rounded-[2rem] sm:rounded-[5rem] border-2 sm:border-4 backdrop-blur-3xl transition-all duration-700 w-full max-w-sm sm:max-w-md ${
       theme === 'DARK' 
         ? 'bg-slate-900/40 border-white/5 shadow-2xl' 
-        : 'bg-white/95 border-slate-300 shadow-2xl'
+        : 'bg-white/95 border-slate-300 shadow-xl'
     }`}>
-      <svg className="w-64 h-64 transform -rotate-90" viewBox="0 0 160 160">
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden rounded-[2rem] sm:rounded-[5rem]">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_3s_infinite]" />
+      </div>
+
+      <svg className="w-40 h-40 sm:w-64 md:w-80 transform -rotate-90" viewBox="0 0 200 200">
+        <defs>
+          <radialGradient id="meterGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        
         <circle 
-          cx="80" cy="80" r={radius} 
-          stroke={theme === 'DARK' ? "#1e293b" : "#e2e8f0"} 
-          strokeWidth="14" fill="transparent" 
+          cx="100" cy="100" r={radius} 
+          stroke={theme === 'DARK' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.05)"} 
+          strokeWidth="18" fill="transparent" 
         />
+        
         <circle
-          cx="80"
-          cy="80"
+          cx="100"
+          cy="100"
           r={radius}
           stroke={color}
-          strokeWidth="14"
+          strokeWidth="18"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
           fill="transparent"
           className="transition-all duration-1000 ease-out"
-          style={{ filter: `drop-shadow(0 0 12px ${color})` }}
+          style={{ filter: `drop-shadow(0 0 10px ${color})` }}
         />
       </svg>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mt-[-10px]">
-        <span className={`text-6xl font-black font-futuristic leading-none ${theme === 'DARK' ? 'text-white' : 'text-slate-950'}`}>
-          {Math.round(score * 100)}%
-        </span>
-        <p className={`text-[12px] font-black uppercase tracking-[0.4em] mt-3 ${theme === 'DARK' ? 'text-slate-500' : 'text-slate-600'}`}>
-          CONFIDENCE
+      
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mt-[-10px] sm:mt-[-20px]">
+        <div className="relative">
+          <span className={`text-3xl sm:text-6xl md:text-8xl font-black font-futuristic leading-none ${theme === 'DARK' ? 'text-white' : 'text-slate-950'}`}>
+            {Math.round(score * 100)}%
+          </span>
+          <div className="absolute -top-3 -right-6 sm:-top-6 sm:-right-12 px-1.5 sm:px-3 py-0.5 sm:py-1 bg-indigo-600 rounded-md sm:rounded-lg text-[7px] sm:text-[10px] font-black text-white shadow-lg animate-bounce">
+            TRUST
+          </div>
+        </div>
+        <p className={`text-[8px] sm:text-[14px] font-black uppercase tracking-[0.3em] sm:tracking-[0.6em] mt-3 sm:mt-6 opacity-40 ${theme === 'DARK' ? 'text-slate-500' : 'text-slate-600'}`}>
+          PROBABILITY
         </p>
       </div>
-      <div className={`mt-10 px-10 py-3 rounded-full border-2 ${
-        theme === 'DARK' ? 'border-white/10 bg-black/40' : 'border-slate-300 bg-slate-50'
+      
+      <div className={`mt-6 sm:mt-14 px-5 sm:px-12 py-2.5 sm:py-5 rounded-full border-2 sm:border-4 flex items-center gap-2 sm:gap-4 transition-all duration-500 ${
+        theme === 'DARK' ? 'border-white/10 bg-black/60 shadow-xl' : 'border-slate-300 bg-slate-50'
       }`}>
-        <span className="text-[13px] font-black uppercase tracking-[0.5em]" style={{ color }}>
-          RISK: {level}
+        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full animate-ping" style={{ backgroundColor: color }} />
+        <span className="text-[10px] sm:text-[16px] font-black uppercase tracking-[0.2em] sm:tracking-[0.6em] whitespace-nowrap" style={{ color }}>
+          {level} RISK
         </span>
       </div>
     </div>

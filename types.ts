@@ -1,42 +1,27 @@
 export type Role = 'USER' | 'ADMIN';
-export type Verdict = 'AI_GENERATED_FRAUD' | 'HUMAN' | 'CAUTION' | 'BLOCK_NOW' | 'SAFE';
+export type Verdict = 'HUMAN' | 'AI_GENERATED' | 'AI_GENERATED_FRAUD';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
-export type ForensicClassification = 'AI_GENERATED' | 'HUMAN';
+export type ForensicClassification = 'HUMAN' | 'AI_GENERATED';
 export type Theme = 'DARK' | 'LIGHT';
 
-export interface AnalysisLayers {
-  spatial_acoustics: string;
-  emotional_micro_dynamics: string;
-  cultural_linguistics: string;
-  breath_emotion_sync: string;
-  spectral_artifacts: string;
-  code_switching: string;
-}
-
 export interface SpamBehavior {
-  language_detected: string;
   scam_patterns: string[];
   spam_risk: RiskLevel;
-  suspicious_phrases?: string[];
-}
-
-export interface VoiceForensics {
-  classification: ForensicClassification;
-  analysis_layers: AnalysisLayers;
+  suspicious_phrases?: string[]; // Kept for UI detail if available
 }
 
 export interface AnalysisResult {
   id: string;
   timestamp: string;
+  status: string;
+  detected_language: string;
   final_verdict: Verdict;
+  classification: ForensicClassification;
   confidence_score: number;
   risk_level: RiskLevel;
   spam_behavior: SpamBehavior;
-  voice_forensics: VoiceForensics;
-  safety_actions: ('IGNORE' | 'BLOCK' | 'REPORT')[];
+  safety_actions: string[];
   operator: string;
-  language_match: boolean;
-  detected_language: string;
 }
 
 export interface LiveUpdate {
@@ -48,17 +33,18 @@ export interface LiveUpdate {
 
 export type AppStatus = 'IDLE' | 'RECORDING' | 'LIVE_CALL' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
 
-export type SupportedLanguage = 'Tamil' | 'English' | 'Hindi' | 'Malayalam' | 'Telugu';
+export type SupportedLanguage = 'Tamil' | 'English' | 'Hindi' | 'Malayalam' | 'Telugu' | 'AUTO';
 
-export const LANGUAGE_LOCALES: Record<SupportedLanguage, string> = {
-  Tamil: 'ta-IN',
-  English: 'en-US',
-  Hindi: 'hi-IN',
-  Malayalam: 'ml-IN',
-  Telugu: 'te-IN',
+export const LANGUAGE_LOCALES: Record<string, string> = {
+  Tamil: 'ta',
+  English: 'en',
+  Hindi: 'hi',
+  Malayalam: 'ml',
+  Telugu: 'te',
+  AUTO: 'AUTO'
 };
 
-export const LANGUAGE_METADATA: Record<SupportedLanguage, {
+export const LANGUAGE_METADATA: Record<string, {
   nativeName: string;
   layers: Record<string, string>;
 }> = {
@@ -81,5 +67,9 @@ export const LANGUAGE_METADATA: Record<SupportedLanguage, {
   Telugu: {
     nativeName: 'తెలుగు',
     layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట్రల్', linguistic: 'భాష' }
+  },
+  AUTO: {
+    nativeName: 'Auto Detect',
+    layers: { spatial: 'Auto', emotional: 'Auto', cultural: 'Auto', respiratory: 'Auto', spectral: 'Auto', linguistic: 'Auto' }
   }
 };
