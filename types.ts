@@ -1,7 +1,7 @@
-
 export type Role = 'USER' | 'ADMIN';
-export type Classification = 'AI_GENERATED' | 'HUMAN';
-export type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+export type Verdict = 'AI_GENERATED_FRAUD' | 'HUMAN' | 'CAUTION' | 'BLOCK_NOW' | 'SAFE';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type ForensicClassification = 'AI_GENERATED' | 'HUMAN';
 export type Theme = 'DARK' | 'LIGHT';
 
 export interface AnalysisLayers {
@@ -13,17 +13,29 @@ export interface AnalysisLayers {
   code_switching: string;
 }
 
+export interface SpamBehavior {
+  language_detected: string;
+  scam_patterns: string[];
+  spam_risk: RiskLevel;
+}
+
+export interface VoiceForensics {
+  classification: ForensicClassification;
+  analysis_layers: AnalysisLayers;
+}
+
 export interface AnalysisResult {
   id: string;
   timestamp: string;
-  classification: Classification;
+  final_verdict: Verdict;
   confidence_score: number;
-  fraud_risk_level: RiskLevel;
-  analysis_layers: AnalysisLayers;
-  analysis_summary: string;
-  detected_language: string;
-  language_match: boolean;
+  risk_level: RiskLevel;
+  spam_behavior: SpamBehavior;
+  voice_forensics: VoiceForensics;
+  safety_actions: ('IGNORE' | 'BLOCK' | 'REPORT')[];
   operator: string;
+  language_match: boolean;
+  detected_language: string;
 }
 
 export type AppStatus = 'IDLE' | 'RECORDING' | 'ANALYZING' | 'COMPLETED' | 'ERROR';
@@ -52,14 +64,14 @@ export const LANGUAGE_METADATA: Record<SupportedLanguage, {
   },
   Hindi: {
     nativeName: 'हिन्दी',
-    layers: { spatial: 'स्थानिक', emotional: 'भावना', cultural: 'सांस्कृतिक', respiratory: 'श्वसन', spectral: 'स्पेक्ट्रल', linguistic: 'भाषा' }
+    layers: { spatial: 'स्थानிக்', emotional: 'भावना', cultural: 'सांस्कृतिक', respiratory: 'श्वसन', spectral: 'स्पेक्ट्रल', linguistic: 'भाषा' }
   },
   Malayalam: {
     nativeName: 'മലയാളം',
-    layers: { spatial: 'സ്ഥലം', emotional: 'വികാരം', cultural: 'സാംസ്காരികം', respiratory: 'ശ്വാസം', spectral: 'സ്പെക്ട്രൽ', linguistic: 'ഭാഷ' }
+    layers: { spatial: 'സ്ഥലം', emotional: 'വികാരം', cultural: 'സാംസ്കാരികം', respiratory: 'ശ്വാസം', spectral: 'സ്പെക്ട്രൽ', linguistic: 'ഭാഷ' }
   },
   Telugu: {
     nativeName: 'తెలుగు',
-    layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట్రల్', linguistic: 'భాഷ' }
+    layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట्रల్', linguistic: 'భాష' }
   }
 };
