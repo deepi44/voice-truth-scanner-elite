@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { RiskLevel, Theme } from '../types';
 
@@ -10,11 +11,11 @@ interface RiskMeterProps {
 const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) => {
   const radius = 85;
   const circumference = 2 * Math.PI * radius;
-  // Ensure score is clamped between 0 and 1 for the visual offset calculations
+  // Ensure score is clamped between 0 and 1 for visual rendering
   const clampedValue = Math.max(0, Math.min(1, score));
   const offset = circumference - (clampedValue * circumference);
   
-  // Explicitly ensure the displayed score is an integer between 0 and 100
+  // Strictly display score between 0 and 100
   const displayScore = Math.min(100, Math.round(clampedValue * 100));
 
   const color = level === 'HIGH' ? '#dc2626' : level === 'MEDIUM' ? '#f59e0b' : '#10b981';
@@ -70,8 +71,8 @@ const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) =
             TRUTH
           </div>
         </div>
-        <p className={`text-[8px] sm:text-[12px] font-black uppercase tracking-[0.3em] sm:tracking-[0.6em] mt-3 sm:mt-6 opacity-40 ${theme === 'DARK' ? 'text-slate-500' : 'text-slate-600'}`}>
-          TRUTH SCORE
+        <p className={`text-[10px] sm:text-[14px] font-black uppercase tracking-[0.3em] sm:tracking-[0.6em] mt-3 sm:mt-6 opacity-40 ${theme === 'DARK' ? 'text-slate-500' : 'text-slate-600'}`}>
+          SCORE
         </p>
       </div>
       

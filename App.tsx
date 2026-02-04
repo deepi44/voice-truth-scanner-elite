@@ -361,12 +361,12 @@ const App: React.FC = () => {
                     <h2 className="text-xl sm:text-3xl font-black font-futuristic uppercase tracking-tighter">6-LAYER FORENSIC ENGINE</h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <AnalysisLayer label="Spatial Acoustics" localizedLabel="Reality Check" description={result.voice_forensics.analysis_layers.layer_1_spatial_acoustics} isCompleted={true} theme={theme} />
-                    <AnalysisLayer label="Micro-Tremors" localizedLabel="Human Bio-Signal" description={result.voice_forensics.analysis_layers.layer_2_emotional_micro_tremors} isCompleted={true} theme={theme} />
-                    <AnalysisLayer label="Cultural Timing" localizedLabel="Rhythm Analytics" description={result.voice_forensics.analysis_layers.layer_3_cultural_speech_timing} isCompleted={true} theme={theme} />
-                    <AnalysisLayer label="Breath Sync" localizedLabel="Organic Pulse" description={result.voice_forensics.analysis_layers.layer_4_breath_emotion_sync} isCompleted={true} theme={theme} />
-                    <AnalysisLayer label="Spectral Artifacts" localizedLabel="AI Fingerprinting" description={result.voice_forensics.analysis_layers.layer_5_spectral_artifacts} isCompleted={true} theme={theme} />
-                    <AnalysisLayer label="Code Switching" localizedLabel="Linguistic Flow" description={result.voice_forensics.analysis_layers.layer_6_code_switching} isCompleted={true} theme={theme} />
+                    <AnalysisLayer label="Spatial Acoustics" localizedLabel="Reality Check" description={result.voice_forensics.analysis_layers.spatial_acoustics} isCompleted={true} theme={theme} />
+                    <AnalysisLayer label="Micro-Dynamics" localizedLabel="Human Bio-Signal" description={result.voice_forensics.analysis_layers.emotional_micro_dynamics} isCompleted={true} theme={theme} />
+                    <AnalysisLayer label="Linguistics" localizedLabel="Rhythm Analytics" description={result.voice_forensics.analysis_layers.cultural_linguistics} isCompleted={true} theme={theme} />
+                    <AnalysisLayer label="Breath Sync" localizedLabel="Organic Pulse" description={result.voice_forensics.analysis_layers.breath_emotion_sync} isCompleted={true} theme={theme} />
+                    <AnalysisLayer label="Spectral Artifacts" localizedLabel="AI Fingerprinting" description={result.voice_forensics.analysis_layers.spectral_artifacts} isCompleted={true} theme={theme} />
+                    <AnalysisLayer label="Code Switching" localizedLabel="Linguistic Flow" description={result.voice_forensics.analysis_layers.code_switching} isCompleted={true} theme={theme} />
                   </div>
                 </section>
 

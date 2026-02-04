@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, SupportedLanguage, LiveUpdate, LANGUAGE_LOCALES } from "../types";
 import { fileToBase64, getMimeType } from "./audioService";
@@ -27,21 +28,17 @@ export const analyzeForensicInput = async (
     });
   }
 
-  const systemInstruction = `You are VOICE TRUTH SCANNER ELITE, an advanced multi-language AI system designed for real-time fraud detection and AI-generated voice identification for the India AI Impact Buildathon.
-
-You will receive audio input and must perform a 6-layer forensic analysis.
+  const systemInstruction = `You are VOICE TRUTH SCANNER ELITE, an advanced multi-language AI system designed for real-time fraud detection and AI-generated voice identification.
 
 STRICT OUTPUT RULES:
 - Respond ONLY with valid JSON.
 - No explanations, no markdown, no extra text.
 
-SUPPORTED LANGUAGES: Tamil, English, Hindi, Malayalam, Telugu.
-
 FINAL JSON OUTPUT FORMAT (EXACT):
 {
   "status": "SUCCESS",
   "final_verdict": "SAFE | CAUTION | AI_GENERATED_FRAUD | BLOCK_NOW",
-  "confidence_score": number (STRICTLY a value between 0.0 and 1.0),
+  "confidence_score": number (0.0 to 1.0),
   "risk_level": "LOW | MEDIUM | HIGH",
   "spam_behavior": {
     "language_detected": "string",
@@ -52,12 +49,12 @@ FINAL JSON OUTPUT FORMAT (EXACT):
   "voice_forensics": {
     "classification": "HUMAN | AI_GENERATED",
     "analysis_layers": {
-      "layer_1_spatial_acoustics": "string",
-      "layer_2_emotional_micro_tremors": "string",
-      "layer_3_cultural_speech_timing": "string",
-      "layer_4_breath_emotion_sync": "string",
-      "layer_5_spectral_artifacts": "string",
-      "layer_6_code_switching": "string"
+      "spatial_acoustics": "string",
+      "emotional_micro_dynamics": "string",
+      "cultural_linguistics": "string",
+      "breath_emotion_sync": "string",
+      "spectral_artifacts": "string",
+      "code_switching": "string"
     }
   },
   "safety_actions": ["IGNORE", "BLOCK", "REPORT"],
@@ -70,10 +67,7 @@ FINAL JSON OUTPUT FORMAT (EXACT):
 
   const prompt = `Perform forensic analysis on input. 
   TARGET_IDENTITY_PROFILE_LANGUAGE: ${targetLanguage}.
-  
-  Examine spatial acoustics, micro-tremors, cultural timing, breath sync, and spectral artifacts.
-  Return valid JSON matching the exact schema provided in system instructions.
-  Ensure confidence_score is a normalized probability between 0 and 1.`;
+  Return valid JSON matching the exact schema provided. Ensure confidence_score is between 0.0 and 1.0.`;
 
   try {
     const response = await ai.models.generateContent({

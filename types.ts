@@ -1,3 +1,4 @@
+
 export type Role = 'USER' | 'ADMIN';
 export type Verdict = 'SAFE' | 'CAUTION' | 'AI_GENERATED_FRAUD' | 'BLOCK_NOW';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -11,12 +12,12 @@ export interface SpamBehavior {
 }
 
 export interface AnalysisLayers {
-  layer_1_spatial_acoustics: string;
-  layer_2_emotional_micro_tremors: string;
-  layer_3_cultural_speech_timing: string;
-  layer_4_breath_emotion_sync: string;
-  layer_5_spectral_artifacts: string;
-  layer_6_code_switching: string;
+  spatial_acoustics: string;
+  emotional_micro_dynamics: string;
+  cultural_linguistics: string;
+  breath_emotion_sync: string;
+  spectral_artifacts: string;
+  code_switching: string;
 }
 
 export interface VoiceForensics {
