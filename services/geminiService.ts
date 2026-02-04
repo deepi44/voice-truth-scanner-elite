@@ -6,7 +6,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const analyzeForensicInput = async (
   input: File | Blob | string,
-  language: SupportedLanguage,
+  targetLanguage: SupportedLanguage,
   retries = 2
 ): Promise<AnalysisResult> => {
   const isText = typeof input === 'string';
@@ -15,7 +15,7 @@ export const analyzeForensicInput = async (
   let parts: any[] = [];
   
   if (isText) {
-    parts.push({ text: `test_message: ${input}` });
+    parts.push({ text: `user_text_message: ${input}` });
   } else {
     const base64Data = await fileToBase64(input);
     const mimeType = getMimeType(input);
@@ -27,26 +27,53 @@ export const analyzeForensicInput = async (
     });
   }
 
-  const langCode = LANGUAGE_LOCALES[language] || 'AUTO';
+  const systemInstruction = `You are VOICE TRUTH SCANNER ELITE, an advanced multi-language AI system designed for real-time fraud detection and AI-generated voice identification for the India AI Impact Buildathon.
 
-  const systemInstruction = "You are VOICE TRUTH SCANNER ELITE, an AI service built for the India AI Impact Buildathon. Your task is to analyze voice audio (via URL or base64) and optional text in real time to detect AI-generated voices and fraud risks. You MUST support Tamil, English, Hindi, Malayalam, and Telugu with automatic language detection and mixed-language (code-switching) handling. Always return a VALID JSON response that strictly follows the output schema. No extra text, no markdown, no explanations.";
+You will receive audio input and must perform a 6-layer forensic analysis.
 
-  const prompt = `Perform forensic analysis. language_selected: ${langCode}.
+STRICT OUTPUT RULES:
+- Respond ONLY with valid JSON.
+- No explanations, no markdown, no extra text.
+
+SUPPORTED LANGUAGES: Tamil, English, Hindi, Malayalam, Telugu.
+
+FINAL JSON OUTPUT FORMAT (EXACT):
+{
+  "status": "SUCCESS",
+  "final_verdict": "SAFE | CAUTION | AI_GENERATED_FRAUD | BLOCK_NOW",
+  "confidence_score": number (STRICTLY a value between 0.0 and 1.0),
+  "risk_level": "LOW | MEDIUM | HIGH",
+  "spam_behavior": {
+    "language_detected": "string",
+    "supported_languages": ["Tamil", "English", "Hindi", "Malayalam", "Telugu"],
+    "scam_patterns": ["string"],
+    "spam_risk": "LOW | MEDIUM | HIGH"
+  },
+  "voice_forensics": {
+    "classification": "HUMAN | AI_GENERATED",
+    "analysis_layers": {
+      "layer_1_spatial_acoustics": "string",
+      "layer_2_emotional_micro_tremors": "string",
+      "layer_3_cultural_speech_timing": "string",
+      "layer_4_breath_emotion_sync": "string",
+      "layer_5_spectral_artifacts": "string",
+      "layer_6_code_switching": "string"
+    }
+  },
+  "safety_actions": ["IGNORE", "BLOCK", "REPORT"],
+  "forensic_evidence": {
+    "timestamp": "ISO_STRING",
+    "sha256_hash": "HEX_STRING",
+    "blockchain_proof": "ipfs://CID"
+  }
+}`;
+
+  const prompt = `Perform forensic analysis on input. 
+  TARGET_IDENTITY_PROFILE_LANGUAGE: ${targetLanguage}.
   
-  Strict Output Schema:
-  {
-    "status": "string",
-    "detected_language": "string",
-    "final_verdict": "HUMAN|AI_GENERATED|AI_GENERATED_FRAUD",
-    "classification": "HUMAN|AI_GENERATED",
-    "confidence_score": number (0-1),
-    "risk_level": "LOW|MEDIUM|HIGH",
-    "spam_behavior": {
-      "scam_patterns": ["string"],
-      "spam_risk": "LOW|MEDIUM|HIGH"
-    },
-    "safety_actions": ["string"]
-  }`;
+  Examine spatial acoustics, micro-tremors, cultural timing, breath sync, and spectral artifacts.
+  Return valid JSON matching the exact schema provided in system instructions.
+  Ensure confidence_score is a normalized probability between 0 and 1.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -62,16 +89,15 @@ export const analyzeForensicInput = async (
     return {
       ...parsed,
       id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      operator: "SECURE_NODE_772"
+      operator: "SECURE_NODE_ELITE_01"
     };
 
   } catch (error: any) {
     if (retries > 0 && error.message?.includes('overloaded')) {
       await sleep(1500);
-      return analyzeForensicInput(input, language, retries - 1);
+      return analyzeForensicInput(input, targetLanguage, retries - 1);
     }
-    throw new Error(error.message || "UPLINK_ABORTED");
+    throw new Error(error.message || "UPLINK_TIMEOUT");
   }
 };
 
@@ -80,19 +106,15 @@ export const startLiveForensics = async (
   onUpdate: (update: LiveUpdate) => void
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const langCode = LANGUAGE_LOCALES[language] || 'AUTO';
-
   return {
     processChunk: async (blob: Blob) => {
       const base64 = await fileToBase64(blob);
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        // Fix: Wrapped multiple parts in a single Content object as per SDK guidelines.
         contents: {
           parts: [
             { inlineData: { data: base64, mimeType: 'audio/webm' } },
-            { text: `LIVE_FORENSIC_CHUNK: Detect AI voice or scam. selected_language: ${langCode}. 
-            Return JSON: {"verdict": "HUMAN|AI_GENERATED|AI_GENERATED_FRAUD", "confidence": number, "current_intent": "string", "is_mismatch": boolean}` }
+            { text: `LIVE_FORENSIC_CHUNK_UPDATE: Return JSON: {"verdict": "string", "confidence": number, "current_intent": "string", "is_mismatch": boolean}` }
           ]
         },
         config: { responseMimeType: "application/json" }

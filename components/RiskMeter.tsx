@@ -10,12 +10,17 @@ interface RiskMeterProps {
 const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) => {
   const radius = 85;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score * circumference);
+  // Ensure score is clamped between 0 and 1 for the visual offset calculations
+  const clampedValue = Math.max(0, Math.min(1, score));
+  const offset = circumference - (clampedValue * circumference);
+  
+  // Explicitly ensure the displayed score is an integer between 0 and 100
+  const displayScore = Math.min(100, Math.round(clampedValue * 100));
 
   const color = level === 'HIGH' ? '#dc2626' : level === 'MEDIUM' ? '#f59e0b' : '#10b981';
 
   return (
-    <div className={`relative flex flex-col items-center justify-center p-6 sm:p-14 rounded-[2rem] sm:rounded-[5rem] border-2 sm:border-4 backdrop-blur-3xl transition-all duration-700 w-full max-w-sm sm:max-w-md ${
+    <div className={`relative flex flex-col items-center justify-center p-6 sm:p-14 rounded-[2rem] sm:rounded-[5rem] border-2 sm:border-4 backdrop-blur-3xl transition-all duration-700 w-full max-sm:max-w-xs sm:max-w-md ${
       theme === 'DARK' 
         ? 'bg-slate-900/40 border-white/5 shadow-2xl' 
         : 'bg-white/95 border-slate-300 shadow-xl'
@@ -54,16 +59,19 @@ const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) =
       </svg>
       
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mt-[-10px] sm:mt-[-20px]">
-        <div className="relative">
-          <span className={`text-3xl sm:text-6xl md:text-8xl font-black font-futuristic leading-none ${theme === 'DARK' ? 'text-white' : 'text-slate-950'}`}>
-            {Math.round(score * 100)}%
-          </span>
+        <div className="relative flex flex-col items-center">
+          <div className="flex items-baseline gap-1">
+            <span className={`text-4xl sm:text-6xl md:text-8xl font-black font-futuristic leading-none ${theme === 'DARK' ? 'text-white' : 'text-slate-950'}`}>
+              {displayScore}
+            </span>
+            <span className={`text-lg sm:text-2xl font-black opacity-30 ${theme === 'DARK' ? 'text-white' : 'text-slate-950'}`}>%</span>
+          </div>
           <div className="absolute -top-3 -right-6 sm:-top-6 sm:-right-12 px-1.5 sm:px-3 py-0.5 sm:py-1 bg-indigo-600 rounded-md sm:rounded-lg text-[7px] sm:text-[10px] font-black text-white shadow-lg animate-bounce">
-            TRUST
+            TRUTH
           </div>
         </div>
-        <p className={`text-[8px] sm:text-[14px] font-black uppercase tracking-[0.3em] sm:tracking-[0.6em] mt-3 sm:mt-6 opacity-40 ${theme === 'DARK' ? 'text-slate-500' : 'text-slate-600'}`}>
-          PROBABILITY
+        <p className={`text-[8px] sm:text-[12px] font-black uppercase tracking-[0.3em] sm:tracking-[0.6em] mt-3 sm:mt-6 opacity-40 ${theme === 'DARK' ? 'text-slate-500' : 'text-slate-600'}`}>
+          TRUTH SCORE
         </p>
       </div>
       
@@ -71,7 +79,7 @@ const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) =
         theme === 'DARK' ? 'border-white/10 bg-black/60 shadow-xl' : 'border-slate-300 bg-slate-50'
       }`}>
         <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full animate-ping" style={{ backgroundColor: color }} />
-        <span className="text-[10px] sm:text-[16px] font-black uppercase tracking-[0.2em] sm:tracking-[0.6em] whitespace-nowrap" style={{ color }}>
+        <span className="text-[10px] sm:text-[14px] font-black uppercase tracking-[0.2em] sm:tracking-[0.6em] whitespace-nowrap" style={{ color }}>
           {level} RISK
         </span>
       </div>

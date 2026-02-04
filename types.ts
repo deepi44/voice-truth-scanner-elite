@@ -1,27 +1,46 @@
 export type Role = 'USER' | 'ADMIN';
-export type Verdict = 'HUMAN' | 'AI_GENERATED' | 'AI_GENERATED_FRAUD';
+export type Verdict = 'SAFE' | 'CAUTION' | 'AI_GENERATED_FRAUD' | 'BLOCK_NOW';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
-export type ForensicClassification = 'HUMAN' | 'AI_GENERATED';
 export type Theme = 'DARK' | 'LIGHT';
 
 export interface SpamBehavior {
+  language_detected: string;
+  supported_languages: string[];
   scam_patterns: string[];
   spam_risk: RiskLevel;
-  suspicious_phrases?: string[]; // Kept for UI detail if available
+}
+
+export interface AnalysisLayers {
+  layer_1_spatial_acoustics: string;
+  layer_2_emotional_micro_tremors: string;
+  layer_3_cultural_speech_timing: string;
+  layer_4_breath_emotion_sync: string;
+  layer_5_spectral_artifacts: string;
+  layer_6_code_switching: string;
+}
+
+export interface VoiceForensics {
+  classification: 'HUMAN' | 'AI_GENERATED';
+  analysis_layers: AnalysisLayers;
+}
+
+export interface ForensicEvidence {
+  timestamp: string;
+  sha256_hash: string;
+  blockchain_proof: string;
 }
 
 export interface AnalysisResult {
-  id: string;
-  timestamp: string;
-  status: string;
-  detected_language: string;
+  id: string; // Internal tracking ID
+  status: 'SUCCESS' | 'ERROR';
   final_verdict: Verdict;
-  classification: ForensicClassification;
   confidence_score: number;
   risk_level: RiskLevel;
   spam_behavior: SpamBehavior;
+  voice_forensics: VoiceForensics;
   safety_actions: string[];
-  operator: string;
+  forensic_evidence: ForensicEvidence;
+  operator?: string;
 }
 
 export interface LiveUpdate {
@@ -42,34 +61,4 @@ export const LANGUAGE_LOCALES: Record<string, string> = {
   Malayalam: 'ml',
   Telugu: 'te',
   AUTO: 'AUTO'
-};
-
-export const LANGUAGE_METADATA: Record<string, {
-  nativeName: string;
-  layers: Record<string, string>;
-}> = {
-  Tamil: {
-    nativeName: 'தமிழ்',
-    layers: { spatial: 'இடம்', emotional: 'உணர்ச்சி', cultural: 'கலாச்சாரம்', respiratory: 'சுவாசம்', spectral: 'நிறமாலை', linguistic: 'மொழி' }
-  },
-  English: {
-    nativeName: 'English',
-    layers: { spatial: 'Spatial', emotional: 'Emotion', cultural: 'Cultural', respiratory: 'Breath', spectral: 'Spectral', linguistic: 'Language' }
-  },
-  Hindi: {
-    nativeName: 'हिन्दी',
-    layers: { spatial: 'स्थानिक', emotional: 'भावना', cultural: 'सांस्कृतिक', respiratory: 'श्वसन', spectral: 'स्पेक्ट्रल', linguistic: 'भाषा' }
-  },
-  Malayalam: {
-    nativeName: 'മലയാളം',
-    layers: { spatial: 'സ്ഥലം', emotional: 'വികാരം', cultural: 'സാംസ്കാരികം', respiratory: 'ശ്വാസം', spectral: 'സ്പെക്ട്രൽ', linguistic: 'ഭാഷ' }
-  },
-  Telugu: {
-    nativeName: 'తెలుగు',
-    layers: { spatial: 'స్థలం', emotional: 'భావం', cultural: 'సాంస్కృతిక', respiratory: 'శ్వాస', spectral: 'స్పెక్ట్రల్', linguistic: 'భాష' }
-  },
-  AUTO: {
-    nativeName: 'Auto Detect',
-    layers: { spatial: 'Auto', emotional: 'Auto', cultural: 'Auto', respiratory: 'Auto', spectral: 'Auto', linguistic: 'Auto' }
-  }
 };
