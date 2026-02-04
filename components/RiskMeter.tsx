@@ -11,12 +11,13 @@ interface RiskMeterProps {
 const RiskMeter: React.FC<RiskMeterProps> = ({ score, level, theme = 'DARK' }) => {
   const radius = 85;
   const circumference = 2 * Math.PI * radius;
-  // Ensure score is clamped between 0 and 1 for visual rendering
+  
+  // Ensure score is clamped between 0.0 and 1.0 for the SVG logic
   const clampedValue = Math.max(0, Math.min(1, score));
   const offset = circumference - (clampedValue * circumference);
   
-  // Strictly display score between 0 and 100
-  const displayScore = Math.min(100, Math.round(clampedValue * 100));
+  // Explicitly calculate integer score for display (strictly 0 to 100)
+  const displayScore = Math.min(100, Math.max(0, Math.round(clampedValue * 100)));
 
   const color = level === 'HIGH' ? '#dc2626' : level === 'MEDIUM' ? '#f59e0b' : '#10b981';
 
