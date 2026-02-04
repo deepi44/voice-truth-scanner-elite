@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Role, 
@@ -18,7 +17,7 @@ import {
   Sun, Moon, ShieldAlert,
   RefreshCcw, ShieldCheck,
   AlertTriangle, Cpu, Network,
-  Database, 
+  Database, MessageSquare,
   User as UserIcon, Lock, PhoneIncoming, X, Settings, 
   Fingerprint, AlertCircle, Hash, Link as LinkIcon
 } from 'lucide-react';
@@ -39,6 +38,7 @@ const App: React.FC = () => {
 
   const [status, setStatus] = useState<AppStatus>('IDLE');
   const [language, setLanguage] = useState<SupportedLanguage>('English');
+  const [smsText, setSmsText] = useState('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [audioFile, setAudioFile] = useState<File | Blob | null>(null);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
@@ -85,8 +85,9 @@ const App: React.FC = () => {
     const input = inputToAnalyze || audioFile;
     if (!input) return;
     setStatus('ANALYZING');
+    setErrorMessage(null);
     try {
-      const res = await analyzeForensicInput(input, language);
+      const res = await analyzeForensicInput(input, language, smsText);
       setResult(res);
       const newHistory = [res, ...history].slice(0, 50);
       setHistory(newHistory);
@@ -124,6 +125,7 @@ const App: React.FC = () => {
     setStatus('IDLE'); 
     setErrorMessage(null); 
     setAudioFile(null);
+    setSmsText('');
   };
 
   const deleteHistoryItem = (id: string) => {
@@ -136,7 +138,6 @@ const App: React.FC = () => {
   const headingText = theme === 'DARK' ? 'text-white' : 'text-slate-950';
   const accentText = theme === 'DARK' ? 'text-indigo-400' : 'text-indigo-700';
 
-  // Language Mismatch Logic: check if selected language is absent in detected string
   const isLanguageMismatch = result && language !== 'AUTO' && 
     result.spam_behavior.language_detected && 
     !result.spam_behavior.language_detected.toLowerCase().includes(language.toLowerCase());
@@ -253,6 +254,16 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-8 relative z-10">
+                    <div className="relative">
+                      <textarea 
+                        value={smsText} 
+                        onChange={(e) => setSmsText(e.target.value)} 
+                        placeholder="OPTIONAL: PASTE SUSPICIOUS SMS/TEXT CONTENT HERE FOR CROSS-VERIFICATION..."
+                        className={`w-full h-24 sm:h-32 rounded-2xl p-5 border outline-none font-bold text-xs sm:text-sm transition-all resize-none ${theme === 'DARK' ? 'bg-black/40 border-white/10 text-white placeholder:opacity-30' : 'bg-slate-50 border-slate-300'}`}
+                      />
+                      <MessageSquare className="absolute right-4 bottom-4 w-5 h-5 opacity-20 pointer-events-none" />
+                    </div>
+
                     <div className="p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border-4 border-indigo-500/10 bg-black/60 h-40 sm:h-64 flex flex-col items-center justify-center overflow-hidden shadow-inner relative">
                         <Waveform isRecording={status === 'RECORDING'} isActive={status !== 'IDLE'} stream={recordingStream || undefined} />
                     </div>
@@ -348,6 +359,13 @@ const App: React.FC = () => {
                     <div className="text-center space-y-8 opacity-30 group">
                       <Radar className={`w-24 h-24 sm:w-48 mx-auto ${accentText} group-hover:scale-110 transition-transform`} />
                       <h3 className={`text-base sm:text-2xl font-black font-futuristic uppercase tracking-[0.3em] ${headingText}`}>SECURE_NODE_READY</h3>
+                    </div>
+                  )}
+                  {status === 'ERROR' && (
+                    <div className="text-center space-y-6">
+                      <AlertTriangle className="w-16 h-16 sm:w-24 mx-auto text-red-600 animate-bounce" />
+                      <p className="text-xs sm:text-base font-black uppercase tracking-widest text-red-600">{errorMessage}</p>
+                      <button onClick={reset} className="px-6 py-3 rounded-xl border border-red-600 text-red-600 font-black uppercase text-[10px]">RETRY_UPLINK</button>
                     </div>
                   )}
               </section>
@@ -475,7 +493,7 @@ const App: React.FC = () => {
           </div>
         )}
         
-        {result && role === 'USER' && status === 'COMPLETED' && (
+        {(result || status === 'COMPLETED') && role === 'USER' && (
            <div className="flex flex-col items-center gap-6 mt-8">
               <button onClick={reset} className="px-10 py-5 rounded-full bg-indigo-600 text-white font-black uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-500 transition-all flex items-center gap-3">
                  <RefreshCcw className="w-5 h-5" /> NEW FORENSIC ANALYSIS

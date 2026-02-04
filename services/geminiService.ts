@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult, SupportedLanguage } from "../types";
 import { fileToBase64, getMimeType } from "./audioService";
@@ -8,53 +7,56 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const analyzeForensicInput = async (
   input: File | Blob | string,
   targetLanguage: SupportedLanguage,
+  smsText?: string,
   retries = 2
 ): Promise<AnalysisResult> => {
   const isText = typeof input === 'string';
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   let parts: any[] = [];
-  let metadata = {};
+  let metadata: any = {
+    language: targetLanguage,
+    audio_format: "wav", // default
+    sms_text: smsText || null
+  };
 
   if (isText) {
-    metadata = { language: targetLanguage, input_type: "text", text: input };
-    parts.push({ text: `USER PROMPT: ${JSON.stringify(metadata)}` });
+    metadata.input_type = "text";
+    metadata.text_content = input;
+    parts.push({ text: `USER_PROMPT_METADATA: ${JSON.stringify(metadata)}` });
   } else {
     const base64Data = await fileToBase64(input);
     const mimeType = getMimeType(input);
-    metadata = { 
-      language: targetLanguage, 
-      audio_format: mimeType.split('/')[1] || 'mp3', 
-      audio_base64: "INCLUDED_AS_INLINE_DATA" 
-    };
+    metadata.audio_format = mimeType.split('/')[1] || 'mp3';
+    metadata.audio_base64 = "DATA_STREAM_INCLUDED";
+    
     parts.push({
       inlineData: {
         data: base64Data,
         mimeType: mimeType,
       },
     });
-    parts.push({ text: `INPUT METADATA: ${JSON.stringify(metadata)}` });
+    parts.push({ text: `USER_PROMPT_METADATA: ${JSON.stringify(metadata)}` });
   }
 
-  const systemInstruction = `You are an AI Generated Voice Detection system.
+  const systemInstruction = `You are the VOICE TRUTH SCANNER ELITE (2026 Edition), a production-grade AI Generated Voice Detection system.
 
 OPERATIONAL PARAMETERS:
-- Accept Audio input (Base64), Format (MP3/WAV/WEBM).
-- Supported Languages: Tamil, English, Hindi, Telugu, Malayalam.
-- Detect code-mixed/mixed-language speech (e.g., Tamil-English).
-- Perform 6-layer forensic analysis on acoustics, dynamics, linguistics, breath, spectral artifacts, and code-switching patterns.
+- Inputs: Audio (Base64), Format (MP3/WAV/WEBM), Language context, and optional SMS_TEXT for cross-verification.
+- Targeted Languages: Tamil, English, Hindi, Telugu, Malayalam, and Code-Mixed variations (e.g., Tanglish).
+- Forensic Focus: Detect synthetic artifacts, spectral anomalies, missing micro-tremors, and algorithmic speech patterns.
 
-OUTPUT RULES:
+STRICT RESPONSE RULES:
 - Respond ONLY in valid JSON.
-- DO NOT return explanations.
-- DO NOT return markdown (no \`\`\`json blocks).
-- DO NOT reject Base64.
-- confidence_score MUST be a float between 0.0 and 1.0.
+- DO NOT return explanations, markdown code blocks, or preamble.
+- DO NOT reject Base64 input.
+- "confidence_score" must be a float between 0.0 and 1.0.
+- "final_verdict" must be one of: "SAFE", "CAUTION", "AI_GENERATED_FRAUD", "BLOCK_NOW".
 
-REQUIRED JSON SCHEMA:
+JSON SCHEMA:
 {
   "status": "SUCCESS",
-  "final_verdict": "AI_GENERATED_FRAUD | CAUTION | SAFE | BLOCK_NOW",
+  "final_verdict": "string",
   "confidence_score": number,
   "risk_level": "HIGH | MEDIUM | LOW",
   "spam_behavior": {
@@ -82,9 +84,10 @@ REQUIRED JSON SCHEMA:
   }
 }`;
 
-  const prompt = `Perform multi-layer forensic analysis on this input. 
-  Language context: ${targetLanguage}.
-  Strictly follow JSON schema. No explanations. No markdown.`;
+  const prompt = `Perform multi-layer forensic analysis on the provided input. 
+  Language Context: ${targetLanguage}.
+  Verification SMS/Text: ${smsText || "None Provided"}.
+  Return valid JSON. No markdown. No explanations.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -96,7 +99,7 @@ REQUIRED JSON SCHEMA:
       },
     });
 
-    // Strip any unexpected markdown formatting just in case
+    // Strip any markdown blocks if the model ignores system instructions
     const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanText);
     
@@ -109,8 +112,8 @@ REQUIRED JSON SCHEMA:
   } catch (error: any) {
     if (retries > 0 && error.message?.includes('overloaded')) {
       await sleep(1500);
-      return analyzeForensicInput(input, targetLanguage, retries - 1);
+      return analyzeForensicInput(input, targetLanguage, smsText, retries - 1);
     }
-    throw new Error(error.message || "FORENSIC_UPLINK_FAILURE");
+    throw new Error(error.message || "FORENSIC_LINK_TERMINATED");
   }
 };
