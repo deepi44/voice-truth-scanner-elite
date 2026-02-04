@@ -6,7 +6,6 @@ export type Theme = 'DARK' | 'LIGHT';
 
 export interface SpamBehavior {
   language_detected: string;
-  supported_languages: string[];
   scam_patterns: string[];
   spam_risk: RiskLevel;
 }
