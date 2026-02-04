@@ -15,6 +15,7 @@
     }
   ],
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "camera"
   ]
 }

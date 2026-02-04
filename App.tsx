@@ -14,14 +14,13 @@ import Waveform from './components/Waveform';
 import RiskMeter from './components/RiskMeter';
 import AnalysisLayer from './components/AnalysisLayer';
 import { 
-  Shield, Upload, Mic, Trash2, Download, 
-  Lock, User, Fingerprint, LogOut, 
-  Globe, FileText, Radar, Search, Activity, 
+  Shield, Upload, Mic, Trash2, LogOut, 
+  Globe, FileText, Radar, Activity, 
   Sun, Moon, ShieldAlert,
-  RefreshCcw, ShieldCheck, ShieldX, X,
-  Zap, AlertTriangle, AlertOctagon, Link,
-  Waves, Cpu, Network, Database,
-  TrendingUp, BarChart3, AlertCircle, Key, Users, Ban, MessageSquare, PhoneIncoming, AlertCircle as AlertIcon
+  RefreshCcw, ShieldCheck, X,
+  AlertTriangle, AlertOctagon, Link,
+  Cpu, Network, BarChart3, AlertCircle,
+  MessageSquare, PhoneIncoming, Camera
 } from 'lucide-react';
 
 const CREDENTIALS = {
@@ -52,7 +51,6 @@ const App: React.FC = () => {
   const [showUrlPanel, setShowUrlPanel] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const liveIntervalRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,7 +111,6 @@ const App: React.FC = () => {
         }
       };
 
-      // 3-second chunks for real-time responsiveness
       recorder.start(3000);
       setStatus('LIVE_CALL');
     } catch (err) {
@@ -138,7 +135,6 @@ const App: React.FC = () => {
     setHistory(prev => prev.filter(h => h.id !== id));
   };
 
-  // UI VARS
   const cardClass = theme === 'DARK' ? 'bg-[#0d1117]/90 border-white/5' : 'bg-white/95 border-slate-200 shadow-xl';
   const headingText = theme === 'DARK' ? 'text-white' : 'text-slate-950';
   const accentText = theme === 'DARK' ? 'text-indigo-400' : 'text-indigo-700';
@@ -161,7 +157,7 @@ const App: React.FC = () => {
             <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="OPERATOR_EMAIL" className={`w-full rounded-2xl py-5 px-8 border outline-none font-bold text-sm ${theme === 'DARK' ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-300'}`} required />
             <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="SECURITY_TOKEN" className={`w-full rounded-2xl py-5 px-8 border outline-none font-bold text-sm ${theme === 'DARK' ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-300'}`} required />
             <button type="submit" className="w-full py-6 rounded-3xl font-black uppercase tracking-[0.4em] bg-indigo-600 text-white shadow-2xl text-xs flex items-center justify-center gap-3">
-               {isLoggingIn ? <RefreshCcw className="animate-spin w-5 h-5" /> : <Fingerprint className="w-6 h-6" />} ACCESS TERMINAL
+               {isLoggingIn ? <RefreshCcw className="animate-spin w-5 h-5" /> : <ShieldCheck className="w-6 h-6" />} ACCESS TERMINAL
             </button>
             <div className="flex justify-center gap-6 pt-4">
                <button type="button" onClick={() => { setLoginEmail(CREDENTIALS.ADMIN.email); setLoginPassword(CREDENTIALS.ADMIN.password); }} className={`text-[9px] font-black uppercase tracking-widest ${accentText} opacity-60 hover:opacity-100`}>ADMIN_UPLINK</button>
@@ -204,31 +200,35 @@ const App: React.FC = () => {
              
              {liveUpdate && (
                <div className={`p-10 rounded-[4rem] border-4 bg-black/60 shadow-2xl space-y-8 min-w-[320px] sm:min-w-[600px] border-${liveUpdate.verdict === 'BLOCK_NOW' || liveUpdate.is_mismatch ? 'red' : 'indigo'}-600`}>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-10">
-                     <div className="text-center">
-                        <span className="text-7xl font-black font-futuristic text-white">{Math.round(liveUpdate.confidence * 100)}%</span>
-                        <p className="text-[12px] font-black uppercase tracking-widest text-slate-500">TRUST_SCORE</p>
-                     </div>
-                     <div className="h-20 w-[2px] bg-white/10 hidden sm:block" />
-                     <div className="text-center">
-                        <span className={`text-4xl font-black uppercase tracking-widest ${liveUpdate.is_mismatch ? 'text-red-600' : liveUpdate.verdict === 'SAFE' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                           {liveUpdate.is_mismatch ? 'MISMATCH' : liveUpdate.verdict.replace('_', ' ')}
-                        </span>
-                        <p className="text-[12px] font-black uppercase tracking-widest text-slate-500">VERDICT</p>
-                     </div>
-                  </div>
-                  <div className="p-6 bg-white/5 rounded-2xl text-left border border-white/5">
-                     <p className="text-[11px] font-black uppercase text-indigo-400 mb-2">DETECTED_INTENT</p>
-                     <p className="text-lg font-bold text-white italic">{liveUpdate.current_intent}</p>
-                  </div>
-                  {liveUpdate.is_mismatch && (
-                    <div className="p-10 rounded-[2.5rem] bg-red-600 text-white space-y-4 animate-bounce border-4 border-white/20 shadow-[0_0_50px_rgba(220,38,38,1)]">
-                       <div className="flex items-center justify-center gap-6">
-                          <AlertTriangle className="w-12 h-12 text-white" />
-                          <p className="text-2xl font-black uppercase tracking-tighter">Audio language mismatch detected – verification failed</p>
+                  {liveUpdate.is_mismatch ? (
+                    <div className="p-12 rounded-[3rem] bg-red-600 text-white space-y-6 animate-bounce border-4 border-white/30 shadow-[0_0_60px_rgba(220,38,38,1)]">
+                       <div className="flex flex-col items-center justify-center gap-6">
+                          <AlertOctagon className="w-20 h-20 text-white" />
+                          <p className="text-4xl font-black uppercase tracking-tighter">Audio language mismatch detected – verification failed</p>
                        </div>
-                       <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Input signal conflicts with {language} gateway encryption.</p>
+                       <div className="h-px bg-white/20 w-full" />
+                       <p className="text-lg font-bold opacity-90 uppercase tracking-[0.2em]">Input signal contradicts {language} gateway encryption protocols.</p>
                     </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-10">
+                         <div className="text-center">
+                            <span className="text-7xl font-black font-futuristic text-white">{Math.round(liveUpdate.confidence * 100)}%</span>
+                            <p className="text-[12px] font-black uppercase tracking-widest text-slate-500">TRUST_SCORE</p>
+                         </div>
+                         <div className="h-20 w-[2px] bg-white/10 hidden sm:block" />
+                         <div className="text-center">
+                            <span className={`text-4xl font-black uppercase tracking-widest ${liveUpdate.verdict === 'SAFE' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                               {liveUpdate.verdict.replace('_', ' ')}
+                            </span>
+                            <p className="text-[12px] font-black uppercase tracking-widest text-slate-500">VERDICT</p>
+                         </div>
+                      </div>
+                      <div className="p-6 bg-white/5 rounded-2xl text-left border border-white/5">
+                         <p className="text-[11px] font-black uppercase text-indigo-400 mb-2">DETECTED_INTENT</p>
+                         <p className="text-lg font-bold text-white italic">{liveUpdate.current_intent}</p>
+                      </div>
+                    </>
                   )}
                </div>
              )}
@@ -267,7 +267,7 @@ const App: React.FC = () => {
                              <td className="p-8 font-black uppercase">{h.detected_language} {!h.language_match && '⚠️'}</td>
                              <td className="p-8">
                                 <span className={`px-4 py-2 rounded-xl text-[10px] font-black border ${h.risk_level === 'HIGH' || !h.language_match ? 'bg-red-600/10 text-red-600 border-red-600/20' : 'bg-emerald-600/10 text-emerald-600 border-emerald-500/20'}`}>
-                                   {!h.language_match ? 'GATEWAY_ERROR' : h.final_verdict}
+                                   {!h.language_match ? 'MISMATCH_CAUTION' : h.final_verdict}
                                 </span>
                              </td>
                              <td className="p-8 text-right font-black text-2xl">{Math.round(h.confidence_score * 100)}%</td>
@@ -311,7 +311,12 @@ const App: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                     <textarea value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="PASTE SMS OR MESSAGE CONTENT HERE..." className="w-full h-64 p-10 rounded-[3rem] border-2 border-white/5 bg-black/20 outline-none font-bold text-lg text-white focus:border-indigo-600 transition-all" />
+                     <div className="relative">
+                       <textarea value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="PASTE SMS OR MESSAGE CONTENT HERE..." className="w-full h-64 p-10 rounded-[3rem] border-2 border-white/5 bg-black/20 outline-none font-bold text-lg text-white focus:border-indigo-600 transition-all" />
+                       <button className="absolute top-8 right-8 p-4 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-600/30 hover:bg-indigo-600 hover:text-white transition-all">
+                          <Camera className="w-6 h-6" />
+                       </button>
+                     </div>
                      <button onClick={() => runAnalysis()} disabled={!textInput} className="w-full py-6 rounded-[2.5rem] bg-indigo-600 text-white font-black uppercase tracking-[0.4em] text-xs flex items-center justify-center gap-4 hover:bg-indigo-700 transition-all shadow-2xl">
                         <MessageSquare className="w-6 h-6" /> START TEXT ANALYSIS
                      </button>
@@ -329,12 +334,12 @@ const App: React.FC = () => {
                 {result && (
                   <div className="w-full space-y-12 animate-in zoom-in duration-700">
                      {!result.language_match && (
-                        <div className="p-10 rounded-[3rem] bg-red-600 text-white flex flex-col items-center text-center gap-6 shadow-[0_0_50px_rgba(220,38,38,0.5)] border-4 border-white/10 mb-10 animate-in slide-in-from-top-10">
+                        <div className="p-10 rounded-[3rem] bg-red-600 text-white flex flex-col items-center text-center gap-6 shadow-[0_0_50px_rgba(220,38,38,0.7)] border-4 border-white/20 mb-10 animate-bounce">
                            <div className="flex items-center gap-6">
-                              <Globe className="w-16 h-16 text-white animate-pulse" />
+                              <AlertOctagon className="w-16 h-16 text-white" />
                               <h3 className="text-2xl font-black uppercase tracking-tighter">Audio language mismatch detected – verification failed</h3>
                            </div>
-                           <p className="text-sm font-bold opacity-80 uppercase tracking-widest">Detected: {result.detected_language} | Gateway: {language}</p>
+                           <p className="text-sm font-bold opacity-90 uppercase tracking-[0.2em]">The detected signal ({result.detected_language}) does not match the active {language} gateway.</p>
                         </div>
                      )}
                      <div className="text-center space-y-10">
@@ -344,7 +349,7 @@ const App: React.FC = () => {
                            </div>
                            <div className="space-y-4">
                               <h2 className={`text-6xl font-black font-futuristic uppercase tracking-tighter ${result.risk_level === 'HIGH' || !result.language_match ? 'text-red-600' : 'text-emerald-600'}`}>
-                                 {!result.language_match ? 'VERIFICATION FAILED' : result.final_verdict.replace('_', ' ')}
+                                 {!result.language_match ? 'GATEWAY REJECTED' : result.final_verdict.replace('_', ' ')}
                               </h2>
                               <p className="text-[12px] font-black uppercase tracking-[0.5em] text-slate-500">SYSTEM_CONFIRMED: {result.detected_language}</p>
                            </div>

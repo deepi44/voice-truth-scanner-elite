@@ -32,44 +32,44 @@ export const analyzeForensicInput = async (
   }
 
   parts.push({
-    text: `VOICE TRUTH SCANNER ELITE v5.2 - BUILDATHON PROTOCOL
-    CONTEXT: India AI User Safety & Fraud Prevention
-    REQUIRED_GATEWAY_LANGUAGE: ${language}
+    text: `VOICE TRUTH SCANNER ELITE v5.2 - SECURITY PROTOCOL
+    CONTEXT: Global AI Fraud Prevention Suite
+    SELECTED_GATEWAY_LANGUAGE: ${language}
     
-    INSTRUCTION:
-    1. LANGUAGE VERIFICATION: Detect the primary language of the input. If it is NOT ${language}, set "language_match": false and "final_verdict": "CAUTION".
-    2. STAGE 1 (Behavioral): Detect Bank/OTP/Threat urgency. Detect linguistic manipulation.
-    3. STAGE 2 (Forensics): If audio, analyze 6 layers (Spatial, Emotional Micro-Dynamics, Cultural Phonetics, Breath Sync, Spectral Artifacts, Code-Switch Flow).
+    INSTRUCTIONS (STRICT ADHERENCE):
+    1. LANGUAGE GATEKEEPER: Identify the input language. 
+       - IF input language != ${language}: Set "language_match": false, "final_verdict": "CAUTION", "risk_level": "HIGH".
+    2. SCAM BEHAVIOR (STAGE 1): Search for pressure tactics, bank impersonation, or urgency patterns.
+    3. VOICE FORENSICS (STAGE 2): If audio, analyze spectral stability, pitch jitter, and synthetic artifacts.
     
-    DECISION TREE:
-    - LANGUAGE MISMATCH -> CAUTION (Mandatory alert)
-    - LOW risk + HUMAN voice -> SAFE
-    - LOW risk + AI voice -> AI_GENERATED_FRAUD
-    - MEDIUM risk + HUMAN voice -> CAUTION
-    - HIGH risk -> BLOCK_NOW
+    DECISION LOGIC:
+    - LANGUAGE MISMATCH -> "CAUTION" (High Priority Alert)
+    - AI DETECTED -> "AI_GENERATED_FRAUD"
+    - SCAM INTENT -> "BLOCK_NOW"
+    - HUMAN + SAFE INTENT -> "SAFE"
     
-    JSON REQUIREMENTS:
+    RETURN JSON FORMAT ONLY:
     {
       "final_verdict": "Verdict",
-      "confidence_score": 0-1,
+      "confidence_score": 0.0-1.0,
       "risk_level": "LOW|MEDIUM|HIGH",
-      "detected_language": "Detected Name",
+      "detected_language": "String",
       "language_match": boolean,
       "spam_behavior": {
         "language_detected": "string",
         "scam_patterns": ["string"],
         "spam_risk": "LOW|MEDIUM|HIGH",
-        "suspicious_phrases": ["short excerpts"]
+        "suspicious_phrases": ["string"]
       },
       "voice_forensics": {
         "classification": "AI_GENERATED|HUMAN",
         "analysis_layers": {
-          "spatial_acoustics": "Forensic evidence",
-          "emotional_micro_dynamics": "Forensic evidence",
-          "cultural_linguistics": "Forensic evidence",
-          "breath_emotion_sync": "Forensic evidence",
-          "spectral_artifacts": "Forensic evidence",
-          "code_switching": "Forensic evidence"
+          "spatial_acoustics": "Forensic findings",
+          "emotional_micro_dynamics": "Forensic findings",
+          "cultural_linguistics": "Forensic findings",
+          "breath_emotion_sync": "Forensic findings",
+          "spectral_artifacts": "Forensic findings",
+          "code_switching": "Forensic findings"
         }
       },
       "safety_actions": ["IGNORE", "BLOCK", "REPORT"]
@@ -115,8 +115,8 @@ export const startLiveForensics = async (
         model: 'gemini-3-flash-preview',
         contents: [
           { inlineData: { data: base64, mimeType: 'audio/webm' } },
-          { text: `LIVE_FORENSIC_CHUNK: Detect AI voice clone or scam intent. Selected Gateway: ${language}. 
-          CRITICAL: If the detected language is NOT ${language}, set "is_mismatch": true.
+          { text: `LIVE_FORENSIC_CHUNK: Detect AI voice or scam. Selected: ${language}. 
+          MANDATORY: If the speaker is NOT using ${language}, set "is_mismatch": true and "verdict": "CAUTION".
           Output JSON: {"verdict": "Verdict", "confidence": 0-1, "current_intent": "intent string", "is_mismatch": boolean}` }
         ],
         config: { responseMimeType: "application/json" }
